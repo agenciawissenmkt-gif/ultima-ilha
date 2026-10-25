@@ -13,7 +13,7 @@
   const MAX_PLAYERS = 50;
   const GRAV = 22, JUMP_V = 7.2;
   const HEIGHT = 1.8, HEIGHT_C = 1.2, RADIUS = 0.4;
-  const EYE = 1.55, EYE_C = 1.05;
+  const EYE = 1.55, EYE_C = 1.05, EYE_P = .42, HEIGHT_P = .6;
   const PLANE_Y = 260;
   const SEA = 0;
 
@@ -28,9 +28,9 @@
   // hip/ads: abertura do tiro em radianos (sem mira / mirando). scope: mira que a arma usa ao mirar.
   const WEAP = {
     pistola: { n: 'Pistola', dmg: 24, rate: 3.5, hip: .035, ads: .012, range: 120, mag: 12, rel: 1.2, pel: 1, tier: 0, ideal: 25, w: 5, scope: 'ponto', head: 1.8 },
-    smg: { n: 'Submetralhadora', dmg: 15, rate: 11, hip: .055, ads: .025, range: 90, mag: 30, rel: 1.8, pel: 1, tier: 1, ideal: 18, w: 3, scope: 'livre', head: 1.6 },
-    escopeta: { n: 'Escopeta', dmg: 12, rate: 1.1, hip: .11, ads: .085, range: 35, mag: 6, rel: 2.2, pel: 8, tier: 2, ideal: 8, w: 2.5, scope: 'ponto', head: 1.5 },
-    fuzil: { n: 'Fuzil', dmg: 26, rate: 7, hip: .045, ads: .007, range: 300, mag: 30, rel: 2.1, pel: 1, tier: 3, ideal: 45, w: 2.5, scope: 'livre', head: 1.8 },
+    smg: { n: 'SMG', dmg: 15, rate: 11, hip: .055, ads: .025, range: 90, mag: 30, rel: 1.8, pel: 1, tier: 1, ideal: 18, w: 3, scope: 'livre', head: 1.6 },
+    escopeta: { n: 'Escopeta 12', dmg: 12, rate: 1.1, hip: .11, ads: .085, range: 35, mag: 6, rel: 2.2, pel: 8, tier: 2, ideal: 8, w: 2.5, scope: 'ponto', head: 1.5 },
+    fuzil: { n: 'Fuzil AR', dmg: 26, rate: 7, hip: .045, ads: .007, range: 300, mag: 30, rel: 2.1, pel: 1, tier: 3, ideal: 45, w: 2.5, scope: 'livre', head: 1.8 },
     sniper: { n: 'Sniper', dmg: 92, rate: .8, hip: .09, ads: .0006, range: 650, mag: 5, rel: 2.8, pel: 1, tier: 4, ideal: 120, w: 1, scope: 'x8', head: 2.2 }
   };
   const WK = Object.keys(WEAP);
@@ -59,6 +59,12 @@
     { w: 20, s: 15, r: 15, d: 10 },
     { w: 15, s: 15, r: 0, d: 15 }
   ];
+
+  // mochila: nível 0 (sem) a 3 — quanto de munição e de cura dá para carregar
+  // skins e cores de calça que dá para escolher no lobby
+  const SKINS = { soldado: 'Soldado', guerreiro: 'Guerreiro', bruxa: 'Bruxa', ninja: 'Ninja', pirata: 'Pirata' };
+  const PANTS = [0x3e4430, 0x1f2633, 0x2a2a2c, 0x7a6a4a, 0x6b2a2a, 0xd0ccc4];
+  const BAG = { ammo: [120, 200, 280, 360], meds: [2, 4, 6, 8], n: ['Sem mochila', 'Mochila Nv.1', 'Mochila Nv.2', 'Mochila Nv.3'] };
 
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
@@ -144,7 +150,7 @@
       const x = R(60, W - 60), z = R(60, W - 60); if (!freeAt(x, z, 3) || Math.hypot(x - W / 2, z - W / 2) > 400) continue;
       w.chests.push({ x, z, y: height(w, x, z), rare: 0 }); k++;
     }
-    for (let k = 0, t = 0; k < 160 && t < 3000; t++) {
+    for (let k = 0, t = 0; k < 260 && t < 5000; t++) {
       const x = R(40, W - 40), z = R(40, W - 40); if (!freeAt(x, z, 2) || Math.hypot(x - W / 2, z - W / 2) > 410) continue;
       w.spots.push({ x, z, y: height(w, x, z) }); k++;
     }
@@ -182,7 +188,7 @@
     const roof = { k: 'b', x0: x0 - .3, x1: x1 + .3, z0: z0 - .3, z1: z1 + .3, y0: y1, y1: y1 + .3, roof: 1, house: hs };
     w.boxes.push(roof); addCol(w, roof, roof.x0, roof.z0, roof.x1, roof.z1);
     w.chests.push({ x, z, y: base, rare: 1 });
-    w.spots.push({ x: x - hw / 4, z: z + hd / 4, y: base }, { x: x + hw / 4, z: z - hd / 4, y: base });
+    w.spots.push({ x: x - hw / 4, z: z + hd / 4, y: base }, { x: x + hw / 4, z: z - hd / 4, y: base }, { x: x - hw / 4, z: z - hd / 4, y: base }, { x: x + hw / 4, z: z + hd / 4, y: base });
   }
 
   function addCol(w, o, x0, z0, x1, z1) {
@@ -221,7 +227,7 @@
 
   // ---------- movimento (servidor e previsão do cliente usam este mesmo código) ----------
   function collide(w, e) {
-    const h = e.crouch ? HEIGHT_C : HEIGHT;
+    const h = e.prone ? HEIGHT_P : e.crouch ? HEIGHT_C : HEIGHT;
     for (let pass = 0; pass < 2; pass++) for (const o of queryBox(w, e.x - 2, e.z - 2, e.x + 2, e.z + 2)) {
       if (o.k === 'b') {
         if (e.y >= o.y1 - .05 || e.y + h <= o.y0) continue;
@@ -242,12 +248,14 @@
     e.x = clamp(e.x, 3, W - 3); e.z = clamp(e.z, 3, W - 3);
   }
   function speedOf(e, i) {
-    if (e.downed) return 1.3;
-    let s = e.crouch ? 2.6 : i.ads ? 3.6 : (i.sp && i.mz > .5 ? 7.4 : 5.4);
+    if (e.downed || e.prone) return 1.3;
+    let s = e.crouch ? 2.6 : i.ads ? 3.6 : (i.sp && i.mz > .5 ? 7.6 : 5.4);
     if (e.healT > 0) s *= .5;
+    if (i.h && !e.crouch) s *= 1.1; // de mãos vazias corre um pouco mais
     return s;
   }
-  // i: { mx (lado), mz (frente), yaw, j (pular), c (agachado), sp (correr), ads (mirando) }
+  // i: { mx (lado), mz (frente), yaw, j (pular), c (agachado), p (deitado), sp (correr), ads (mirando) }
+  // correndo + agachar = deslize (como no CoD)
   function step(w, e, i, dt) {
     e.yaw = i.yaw;
     const sy = Math.sin(i.yaw), cy = Math.cos(i.yaw);
@@ -264,11 +272,22 @@
       if (e.y <= g) { e.y = g; e.fly = 0; e.vy = 0; e.onG = true; collide(w, e); }
       return;
     }
-    e.crouch = !e.downed && !!i.c;
+    // começa um deslize se apertou agachar enquanto corria
+    if (e.onG && i.c && !e.prevC && e.wasSprint && !e.downed && !(e.slideT > 0)) {
+      const sl = Math.hypot(e.vx, e.vz) || 1; e.slideT = .8; e.sdx = e.vx / sl; e.sdz = e.vz / sl;
+    }
+    e.prevC = !!i.c;
+    if (i.j && e.slideT > 0) e.slideT = 0;
+    e.prone = !e.downed && !!i.p && !(e.slideT > 0);
+    e.crouch = !e.downed && !e.prone && (!!i.c || e.slideT > 0);
     const sp = speedOf(e, i);
     vx *= sp; vz *= sp;
-    if (e.onG) { e.vx = vx; e.vz = vz; if (i.j && !e.downed && !e.crouch) { e.vy = JUMP_V; e.onG = false; } }
+    if (e.slideT > 0 && e.onG) {
+      e.slideT = Math.max(0, e.slideT - dt); const v = 3.5 + 8.5 * (e.slideT / .8);
+      e.vx = e.sdx * v + vx * .15; e.vz = e.sdz * v + vz * .15;
+    } else if (e.onG) { e.vx = vx; e.vz = vz; if (i.j && !e.downed && !e.crouch && !e.prone) { e.vy = JUMP_V; e.onG = false; } }
     else { const k = Math.min(1, dt * 2); e.vx += (vx - e.vx) * k; e.vz += (vz - e.vz) * k; }
+    e.wasSprint = e.onG && sp > 7 && !e.crouch;
     e.x += e.vx * dt; e.z += e.vz * dt;
     collide(w, e);
     e.vy -= GRAV * dt; e.y += e.vy * dt;
@@ -278,7 +297,7 @@
     // cabeça no teto
     if (e.vy > 0) for (const o of queryPoint(w, e.x, e.z)) if (o.k === 'b' && e.x > o.x0 && e.x < o.x1 && e.z > o.z0 && e.z < o.z1 && e.y + HEIGHT > o.y0 && e.y < o.y0) { e.y = o.y0 - HEIGHT; e.vy = 0; }
   }
-  const eyeOf = e => (e.crouch || e.downed) ? EYE_C : EYE;
+  const eyeOf = e => e.prone ? EYE_P : (e.crouch || e.downed) ? EYE_C : EYE;
   function dirOf(yaw, pitch) { const cp = Math.cos(pitch); return [-Math.sin(yaw) * cp, Math.sin(pitch), -Math.cos(yaw) * cp]; }
 
   // ---------- raio (tiros e linha de visão) ----------
@@ -332,7 +351,7 @@
   }
   // acerto em personagem: cabeça (esfera) e corpo (três esferas). devolve { t, head } ou null
   function rayPlayer(e, ox, oy, oz, dx, dy, dz) {
-    const k = (e.crouch || e.downed) ? .62 : 1;
+    const k = e.prone ? .26 : (e.crouch || e.downed) ? .62 : 1;
     let best = null;
     const test = (cy, r, head) => {
       const fx = ox - e.x, fy = oy - (e.y + cy * k), fz = oz - e.z;
@@ -346,7 +365,7 @@
   }
 
   return {
-    W, N, STEP, TICK, MAX_PLAYERS, HEIGHT, HEIGHT_C, RADIUS, EYE, EYE_C, PLANE_Y, SEA, MODES, WEAP, WK, RAR, SCOPES, PH,
+    W, N, STEP, TICK, MAX_PLAYERS, HEIGHT, HEIGHT_C, RADIUS, EYE, EYE_C, EYE_P, PLANE_Y, SEA, MODES, WEAP, WK, RAR, SCOPES, PH, BAG, SKINS, PANTS,
     clamp, rng, genWorld, height, groundAt, step, eyeOf, dirOf, rayHit, rayPlayer, queryBox, scopeFor
   };
 });

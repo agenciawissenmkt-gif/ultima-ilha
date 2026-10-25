@@ -36,6 +36,7 @@ function saveStats() {
   saveTimer = setTimeout(() => fs.writeFile(STATS_FILE, JSON.stringify(stats), () => {}), 2000);
 }
 const statOf = id => stats[id] || (stats[id] = { matches: 0, wins: 0, kills: 0 });
+const lookOf = id => { const st = statOf(id); return st.look && SH.SKINS[st.look.s] ? st.look : { s: 'soldado', c: 0 }; };
 
 // ---------- site ----------
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json' };
@@ -130,7 +131,7 @@ function queueStatus(mode) {
 }
 function startMatch(mode) {
   const pm = pending[mode]; if (!pm) return; delete pending[mode];
-  const groups = pm.teams.map(t => t.flatMap(p => p.users).map(id => users.get(id)).filter(Boolean).map(u => ({ id: u.id, name: u.name })));
+  const groups = pm.teams.map(t => t.flatMap(p => p.users).map(id => users.get(id)).filter(Boolean).map(u => ({ id: u.id, name: u.name, look: lookOf(u.id) })));
   const m = new Match(mode, groups.filter(g => g.length), { onResult });
   matches.set(m.id, m);
   for (const t of pm.teams) for (const p of t) {
@@ -210,7 +211,7 @@ async function hello(conn, m) {
   u.conn = conn; conn.user = u;
   let token = m.session && sessions.has(m.session) ? m.session : crypto.randomBytes(24).toString('hex');
   sessions.set(token, { userId: u.id, exp: Date.now() + SESSION_DAYS * 864e5 });
-  conn.send({ t: 'auth', ok: true, session: token, user: { id: u.id, name: u.name, pic: u.pic }, stats: statOf(u.id), modes: SH.MODES });
+  conn.send({ t: 'auth', ok: true, session: token, user: { id: u.id, name: u.name, pic: u.pic }, stats: statOf(u.id), look: lookOf(u.id), modes: SH.MODES });
   if (!u.party || !parties.has(u.party)) createParty(u);
   sendParty(parties.get(u.party));
   if (u.match && matches.has(u.match)) matches.get(u.match).attach(u.id, conn);
@@ -241,6 +242,12 @@ function handle(u, m) {
       if (target.queued) return u.conn.send({ t: 'error', msg: 'Esse grupo está procurando partida. Peça para cancelarem e tente de novo.' });
       if (u.match) return;
       leaveParty(u, true); target.members.push(u.id); u.party = target.code; sendParty(target);
+      break;
+    }
+    case 'skin': {
+      if (!SH.SKINS[m.s]) return;
+      const c = Math.max(0, Math.min(SH.PANTS.length - 1, m.c | 0));
+      statOf(u.id).look = { s: m.s, c }; saveStats();
       break;
     }
     case 'party.leave': if (party && party.members.length > 1 && !u.match) leaveParty(u); break;

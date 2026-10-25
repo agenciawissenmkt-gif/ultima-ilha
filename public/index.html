@@ -53,6 +53,16 @@
       </form>
       <button class="btn ghost" id="leaveParty" hidden>Sair do grupo</button>
     </div>
+    <div class="card look">
+      <h2>Visual</h2>
+      <div class="look-row">
+        <canvas id="preview" width="160" height="200" aria-label="Prévia do personagem"></canvas>
+        <div class="look-opts">
+          <span class="small">Skin</span><div class="skins" id="skins"></div>
+          <span class="small">Calça</span><div class="pants" id="pants"></div>
+        </div>
+      </div>
+    </div>
     <div class="card">
       <h2>Modo</h2>
       <div class="modes" id="modes"></div>
@@ -95,10 +105,13 @@
       <button class="btn hot" id="bRev" hidden>Reanimar <kbd>F</kbd></button>
       <button class="btn hot" id="bPick" hidden>Pegar <kbd>E</kbd></button>
       <button class="btn" id="bSwap">Trocar <kbd>Q</kbd></button>
+      <button class="btn desk" id="bCrouch">Agachar <kbd>C</kbd></button>
+      <button class="btn desk" id="bProne">Deitar <kbd>Z</kbd></button>
       <button class="btn" id="bReload">Recarregar <kbd>R</kbd></button>
       <button class="btn" id="bHeal">Curar <kbd>H</kbd></button>
     </div>
-    <div class="slots"><div class="slot" id="s0"></div><div class="slot" id="s1"></div></div>
+    <div class="bag" id="bagInfo"></div>
+    <div class="slots"><button class="slot" id="s0"></button><button class="slot" id="s1"></button><button class="slot hands" id="s2"></button></div>
     <div class="bars"><div class="bar" id="shb"><i></i></div><div class="bar" id="hpb"><i></i></div></div>
   </div>
   <!-- controles de toque -->
@@ -108,6 +121,8 @@
     <button class="tbtn" id="tAds">MIRA</button>
     <button class="tbtn" id="tJump">PULAR</button>
     <button class="tbtn" id="tCrouch">AGACHAR</button>
+    <button class="tbtn" id="tProne">DEITAR</button>
+    <button class="tbtn" id="tSprint">CORRER</button>
   </div>
   <button class="btn ghost" id="leaveMatch" hidden>Voltar ao lobby</button>
 </div>
@@ -125,6 +140,7 @@
     <label class="opt" for="graf">Gráficos
       <select id="graf"><option value="baixo">Baixo (mais leve)</option><option value="medio">Médio</option><option value="alto">Alto</option></select>
     </label>
+    <label class="opt chk" for="assist"><input type="checkbox" id="assist"> Assistência de mira (gruda no inimigo e puxa para a cabeça)</label>
     <label class="opt chk" for="adsHold"><input type="checkbox" id="adsHold"> Segurar o botão direito para mirar (no PC)</label>
     <button class="btn big" id="closeSettings">Salvar</button>
   </div>

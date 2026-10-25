@@ -13,17 +13,17 @@
 
   // ---------- configurações ----------
   const SENS = [['geral', 'Geral (sem mirar)'], ['ponto', 'Ponto vermelho'], ['x2', 'Mira 2x'], ['x4', 'Mira 4x'], ['x8', 'Sniper (8x)']];
-  let conf = { sens: { geral: 50, ponto: 45, x2: 40, x4: 35, x8: 30 }, graf: isTouch ? 'baixo' : 'medio', adsHold: false };
+  let conf = { sens: { geral: 50, ponto: 45, x2: 40, x4: 35, x8: 30 }, graf: isTouch ? 'baixo' : 'medio', adsHold: false, assist: true, look: { s: 'soldado', c: 0 } };
   try { const c = JSON.parse(store.get('ui-conf') || 'null'); if (c && c.sens) conf = Object.assign(conf, c, { sens: Object.assign(conf.sens, c.sens) }); } catch (e) { }
   function renderSettings() {
     $('#sensList').innerHTML = SENS.map(([k, n]) => `<label for="s_${k}">${n}<output id="o_${k}">${conf.sens[k]}</output><input type="range" id="s_${k}" min="1" max="100" value="${conf.sens[k]}" data-k="${k}"></label>`).join('');
-    $('#graf').value = conf.graf; $('#adsHold').checked = conf.adsHold;
+    $('#graf').value = conf.graf; $('#adsHold').checked = conf.adsHold; $('#assist').checked = conf.assist;
   }
   $('#sensList').addEventListener('input', e => { const k = e.target.dataset.k; if (!k) return; conf.sens[k] = +e.target.value; $('#o_' + k).textContent = e.target.value; });
   function openSettings() { if (document.pointerLockElement) document.exitPointerLock(); renderSettings(); $('#settings').hidden = false; }
   document.querySelectorAll('[data-open-settings]').forEach(b => b.addEventListener('click', openSettings));
   $('#closeSettings').addEventListener('click', () => {
-    conf.graf = $('#graf').value; conf.adsHold = $('#adsHold').checked; store.set('ui-conf', JSON.stringify(conf));
+    conf.graf = $('#graf').value; conf.adsHold = $('#adsHold').checked; conf.assist = $('#assist').checked; store.set('ui-conf', JSON.stringify(conf));
     $('#settings').hidden = true; applyGraphics();
   });
 
@@ -67,7 +67,7 @@
       case 'auth':
         if (!m.ok) { authed = false; store.set('ui-session', null); $('#loginMsg').textContent = m.msg; screen('login'); return; }
         authed = true; retry = 0; $('#conn').hidden = true;
-        store.set('ui-session', m.session); user = m.user; stats = m.stats; renderMe(); if (!M) screen('lobby');
+        store.set('ui-session', m.session); user = m.user; stats = m.stats; if (m.look) { conf.look = m.look; store.set('ui-conf', JSON.stringify(conf)); } renderMe(); renderLook(); if (!M) screen('lobby');
         break;
       case 'party': party = m; if (!m.queued) queue = null; renderParty(); break;
       case 'queue': queue = m; renderQueue(); break;
@@ -99,6 +99,19 @@
     try { google.accounts.id.disableAutoSelect(); } catch (e) { }
     screen('login');
   });
+
+  // ---------- visual do personagem (skin e calça) ----------
+  const preview = GX.makePreview($('#preview'));
+  function renderLook() {
+    const L = conf.look || { s: 'soldado', c: 0 };
+    $('#skins').innerHTML = Object.entries(SH.SKINS).map(([k, n]) => `<button class="btn ${L.s === k ? 'on' : ''}" data-skin="${k}">${n}</button>`).join('');
+    $('#pants').innerHTML = SH.PANTS.map((c, i) => `<button class="sw ${L.c === i ? 'on' : ''}" data-pants="${i}" style="background:#${c.toString(16).padStart(6, '0')}" aria-label="Calça ${i + 1}"></button>`).join('');
+    preview.set(L);
+  }
+  function setLook(L) { conf.look = L; store.set('ui-conf', JSON.stringify(conf)); send({ t: 'skin', s: L.s, c: L.c }); renderLook(); }
+  $('#skins').addEventListener('click', e => { const b = e.target.closest('[data-skin]'); if (b) setLook({ s: b.dataset.skin, c: (conf.look || {}).c | 0 }); });
+  $('#pants').addEventListener('click', e => { const b = e.target.closest('[data-pants]'); if (b) setLook({ s: (conf.look || {}).s || 'soldado', c: +b.dataset.pants }); });
+  renderLook();
 
   // ---------- lobby ----------
   function avatar(pic) { return pic ? `<img src="${esc(pic)}" alt="" referrerpolicy="no-referrer">` : '<span class="ph"></span>'; }
@@ -242,7 +255,7 @@
     M.me$ = me; M.zone = s.z; M.planeT = s.pl; M.alive = s.al; M.tl = s.tl;
     // reconciliação com o servidor
     const p = M.pred;
-    Object.assign(p, { x: me.x, y: me.y, z: me.z, vx: me.vx, vy: me.vy, vz: me.vz, onG: !!me.og, fly: me.fl, crouch: !!me.cr, downed: !!me.dn, healT: me.hl });
+    Object.assign(p, { x: me.x, y: me.y, z: me.z, vx: me.vx, vy: me.vy, vz: me.vz, onG: !!me.og, fly: me.fl, crouch: !!me.cr, prone: !!me.pr, slideT: me.st, sdx: me.sdx, sdz: me.sdz, prevC: !!me.pc, wasSprint: !!me.ws, downed: !!me.dn, healT: me.hl });
     M.pending = M.pending.filter(i => i.s > s.ack);
     if (me.ld && me.al) for (const i of M.pending) SH.step(M.world, p, i, STEP);
     if (me.ld && !wasLanded) { $('#jump').hidden = true; $('#bottom').hidden = false; msg('Desça perto das casas: os baús têm armas melhores'); }
@@ -299,7 +312,7 @@
   const SENS_KEY = { hip: 'geral', ponto: 'ponto', x2: 'x2', x4: 'x4', x8: 'x8' };
   function look(dx, dy, base) {
     if (!M) return;
-    const sc = scopeNow(), k = base * (conf.sens[SENS_KEY[sc]] / 50) * (SCOPES[sc].fov / 70) ** .9;
+    const sc = scopeNow(), k = base * (conf.sens[SENS_KEY[sc]] / 50) * (SCOPES[sc].fov / 70) ** .9 * (M.stick ? .6 : 1);
     M.yaw -= dx * k; M.pitch = clamp(M.pitch - dy * k, -1.45, 1.45);
   }
   addEventListener('keydown', e => {
@@ -325,8 +338,10 @@
   function action(k, extra) { send(Object.assign({ t: 'a', k }, extra)); }
   function setRev(on) { if (!M || M.rev === on) return; M.rev = on; action('rev', { on: on ? 1 : 0 }); }
   function onKey(c) {
-    if (c === 'Space') { if (M.me$ && !M.me$.ld) action('jump'); else M.jumpQ = true; }
-    if (c === 'KeyC' || c === 'ControlLeft') M.crouch = !M.crouch;
+    if (c === 'Space') { if (M.me$ && !M.me$.ld) action('jump'); else if (M.crouch || M.prone) { M.crouch = M.prone = false; } else M.jumpQ = true; }
+    if (c === 'KeyC') { M.crouch = !M.crouch; M.prone = false; }
+    if (c === 'KeyZ') { M.prone = !M.prone; M.crouch = false; }
+    if (c === 'Digit3') action('w2');
     if (c === 'KeyQ') action('swap'); if (c === 'Digit1') action('w0'); if (c === 'Digit2') action('w1');
     if (c === 'KeyR') action('reload'); if (c === 'KeyH') action('heal'); if (c === 'KeyE') action('pick');
     if (c === 'KeyF') setRev(true);
@@ -364,37 +379,71 @@
   }
   bind('#tAds', () => { M.ads = !M.ads; });
   bind('#tJump', () => { if (M.me$ && !M.me$.ld) action('jump'); else M.jumpQ = true; });
-  bind('#tCrouch', () => { M.crouch = !M.crouch; });
+  bind('#tCrouch', () => { M.crouch = !M.crouch; M.prone = false; });
+  bind('#tProne', () => { M.prone = !M.prone; M.crouch = false; });
+  bind('#tSprint', () => { M.sprintLock = !M.sprintLock; });
+  bind('#bCrouch', () => { M.crouch = !M.crouch; M.prone = false; });
+  bind('#bProne', () => { M.prone = !M.prone; M.crouch = false; });
+  for (let k = 0; k < 3; k++) bind('#s' + k, () => action('w' + k));
+
+  // assistência de mira: gruda no inimigo perto da mira e, atirando, puxa do peito para a cabeça
+  function aimAssist(fire, me) {
+    M.stick = false;
+    if (!conf.assist || !me.al || me.dn || M.pred.fly || !(fire || M.ads)) { M.pull = 0; M.assistId = -1; return; }
+    const w = me.w[me.cur]; const range = w ? WEAP[WK[w[0]]].range : 2.5;
+    const cp = camera.position, sc = scopeNow(), cone = (M.ads ? .1 : .14) * (SCOPES[sc].fov / 70) + .02;
+    const fwd = SH.dirOf(M.yaw, M.pitch);
+    let best = null, ba = cone;
+    for (const e of M.ents || []) {
+      const n = M.names[e.id]; if (!n || n[1] === M.team || e.id === M.me || (e.f & 2)) continue;
+      const k = (e.f & 256) ? .26 : (e.f & (1 | 16)) ? .62 : 1;
+      const cx = e.x, cy = e.y + 1.2 * k, cz = e.z, dx = cx - cp.x, dy = cy - cp.y, dz = cz - cp.z, d = Math.hypot(dx, dy, dz);
+      if (d > range || d < .5) continue;
+      const a = Math.acos(clamp((dx * fwd[0] + dy * fwd[1] + dz * fwd[2]) / d, -1, 1));
+      if (a < ba && SH.rayHit(M.world, cp.x, cp.y, cp.z, dx / d, dy / d, dz / d, d) >= d - .6) { ba = a; best = { e, k, d }; }
+    }
+    if (!best) { M.pull = 0; M.assistId = -1; return; }
+    if (best.e.id !== M.assistId) { M.assistId = best.e.id; M.pull = 0; }
+    M.pull = fire ? Math.min(1, (M.pull || 0) + STEP * 2.2) : Math.max(0, (M.pull || 0) - STEP * 2);
+    const e = best.e, ty = e.y + (1.2 + (1.62 - 1.2) * M.pull) * best.k;
+    const dx = e.x - cp.x, dy = ty - cp.y, dz = e.z - cp.z, h = Math.hypot(dx, dz);
+    const tYaw = Math.atan2(-dx, -dz), tPitch = Math.atan2(dy, h);
+    let dyaw = tYaw - M.yaw; while (dyaw > Math.PI) dyaw -= TAU; while (dyaw < -Math.PI) dyaw += TAU;
+    const str = (M.ads ? .2 : .14) * (fire ? 1.3 : 1);
+    M.yaw += dyaw * str; M.pitch = clamp(M.pitch + (tPitch - M.pitch) * str, -1.45, 1.45);
+    M.stick = true;
+  }
 
   function sampleInput() {
     const me = M.me$; if (!me || !me.ld || !me.al) { M.jumpQ = false; return; }
     let mx = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0), mz = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
-    let sprint = !!(keys.ShiftLeft || keys.ShiftRight);
+    let sprint = !!(keys.ShiftLeft || keys.ShiftRight || keys.ControlLeft || keys.ControlRight);
     if (joy.id !== null) {
       mx = (joy.x - joy.ox) / 50; mz = -(joy.y - joy.oy) / 50; const l = Math.hypot(mx, mz);
-      if (l > 1) { mx /= l; mz /= l; } sprint = l > 1.15 && mz > .6;
+      if (l > 1) { mx /= l; mz /= l; } sprint = (l > 1.15 || M.sprintLock) && mz > .6;
     }
     if (me.dn) M.ads = false;
+    if (M.sprintLock && joy.id === null && mz > .5) sprint = true;
     const fire = (mouseDown && document.pointerLockElement === cv) || touchFire;
+    aimAssist(fire, me);
     // a mira (centro da tela) define para onde o tiro vai: calcula o ponto que a câmera enxerga e o ângulo a partir dos olhos
     let ay = M.yaw, ap = M.pitch;
     if (fire || M.ads) {
       const d = SH.dirOf(M.yaw, M.pitch), cp = camera.position;
       let t = SH.rayHit(M.world, cp.x, cp.y, cp.z, d[0], d[1], d[2], 400);
       const tx = cp.x + d[0] * t, ty = cp.y + d[1] * t, tz = cp.z + d[2] * t;
-      const ex = M.pred.x, ey = M.pred.y + ((M.pred.crouch || me.dn) ? SH.EYE_C : SH.EYE), ez = M.pred.z;
+      const ex = M.pred.x, ey = M.pred.y + SH.eyeOf(Object.assign({}, M.pred, { downed: !!me.dn })), ez = M.pred.z;
       const dx = tx - ex, dy = ty - ey, dz = tz - ez, h = Math.hypot(dx, dz);
       if (h > 2) { ay = Math.atan2(-dx, -dz); ap = Math.atan2(dy, h); }
     }
     const i = {
       s: ++M.seq, mx: Math.round(mx * 100) / 100, mz: Math.round(mz * 100) / 100, yaw: Math.round(M.yaw * 1e4) / 1e4, ay: Math.round(ay * 1e4) / 1e4, pitch: Math.round(ap * 1e4) / 1e4,
-      j: M.jumpQ ? 1 : 0, c: M.crouch ? 1 : 0, sp: sprint ? 1 : 0, ads: M.ads ? 1 : 0, f: fire ? 1 : 0
+      j: M.jumpQ ? 1 : 0, c: M.crouch ? 1 : 0, p: M.prone ? 1 : 0, h: me.cur === 2 ? 1 : 0, sp: sprint ? 1 : 0, ads: M.ads ? 1 : 0, f: fire ? 1 : 0
     };
     M.jumpQ = false;
     send(Object.assign({ t: 'i' }, i));
     M.pending.push(i); if (M.pending.length > 90) M.pending.shift();
     SH.step(M.world, M.pred, i, STEP);
-    if (M.pred.onG && M.crouch !== M.pred.crouch && !me.dn) M.crouch = M.pred.crouch;
   }
 
   // ---------- interpolação ----------
@@ -456,8 +505,8 @@
       seen.add(e.id);
       let ch = M.chars.get(e.id);
       const n = M.names[e.id] || ['?', -1, 0], mate = n[1] === M.team, isMe = e.id === M.me;
-      if (!ch) { ch = GX.makeChar(e.id, isMe ? 'me' : mate ? 'mate' : 'enemy', mate && !isMe ? n[0] : ''); M.chars.set(e.id, ch); }
-      const s = isMe && me && me.al ? Object.assign({}, e, { x: p.x, y: p.y, z: p.z, yaw: M.yaw, pitch: M.pitch, f: (e.f & ~(16 | 128 | 2 | 64)) | (p.crouch ? 16 : 0) | (p.moving ? 128 : 0) | (p.fly === 1 ? 2 : 0) | (p.fly === 2 ? 64 : 0) }) : e;
+      if (!ch) { ch = GX.makeChar(e.id, isMe ? 'me' : mate ? 'mate' : 'enemy', mate && !isMe ? n[0] : '', { s: n[3], c: n[4] }); M.chars.set(e.id, ch); }
+      const s = isMe && me && me.al ? Object.assign({}, e, { x: p.x, y: p.y, z: p.z, yaw: M.yaw, pitch: M.pitch, f: (e.f & ~(16 | 128 | 2 | 64 | 256 | 512)) | (p.crouch ? 16 : 0) | (p.moving ? 128 : 0) | (p.fly === 1 ? 2 : 0) | (p.fly === 2 ? 64 : 0) | (p.prone ? 256 : 0) | (p.slideT > 0 ? 512 : 0), onG: p.onG, air: !p.onG && !p.fly }) : e;
       s.ground = SH.height(M.world, s.x, s.z);
       GX.poseChar(ch, s, dt);
       ch.visible = !(isMe && fp);
@@ -536,15 +585,19 @@
     $('#hpb i').style.width = clamp(me.hp, 0, 100) + '%'; $('#hpb').classList.toggle('down', !!me.dn); $('#shb i').style.width = me.sh + '%';
     for (let i = 0; i < 2; i++) {
       const w = me.w[i], el = $('#s' + i); el.classList.toggle('on', i === me.cur);
-      el.innerHTML = w ? `<span style="color:${RAR[w[1]].c}">${WEAP[WK[w[0]]].n}${WEAP[WK[w[0]]].scope === 'livre' && me.sc ? ' · ' + me.sc + 'x' : ''}</span><b>${i === me.cur && me.rl ? '···' : w[2]}<small> / ${me.am}</small></b>` : '<span style="color:var(--muted)">vazio</span>';
+      el.innerHTML = `<em>${i + 1}</em>` + (w ? `<span style="color:${RAR[w[1]].c}">${WEAP[WK[w[0]]].n}${WEAP[WK[w[0]]].scope === 'livre' && me.sc ? ' · ' + me.sc + 'x' : ''}</span><b>${i === me.cur && me.rl ? '···' : w[2]}</b>` : '<span style="color:var(--muted)">vazio</span>');
     }
+    $('#s2').classList.toggle('on', me.cur === 2); $('#s2').innerHTML = '<em>3</em><span>Mãos</span><b>✊</b>';
+    const bagN = me.bag | 0;
+    $('#bagInfo').innerHTML = `<b>${SH.BAG.n[bagN]}</b><span>Munição ${me.am}/${SH.BAG.ammo[bagN]}</span><span>Cura ${me.md}/${SH.BAG.meds[bagN]}</span>${me.sc ? `<span>Mira ${me.sc}x</span>` : ''}`;
     $('#bHeal').innerHTML = `Curar (${me.md})<kbd>H</kbd>`;
     M.nearW = null; M.nearDown = null;
     if (me.al && !me.dn && me.ld && !M.pred.fly) {
-      if (me.w[0] && me.w[1]) { let bd = 2.6 * 2.6; for (const it of M.items.values()) { if (it.k !== 'w' || Math.abs(it.y - M.pred.y) > 2) continue; const d = (it.x - M.pred.x) ** 2 + (it.z - M.pred.z) ** 2; if (d < bd) { bd = d; M.nearW = it; } } }
+      { let bd = 2.6 * 2.6; for (const it of M.items.values()) { if (it.k !== 'w' || Math.abs(it.y - M.pred.y) > 2) continue; const d = (it.x - M.pred.x) ** 2 + (it.z - M.pred.z) ** 2; if (d < bd) { bd = d; M.nearW = it; } } }
       for (const e of M.ents || []) { const n = M.names[e.id]; if (e.id !== M.me && n && n[1] === M.team && (e.f & 1) && Math.hypot(e.x - M.pred.x, e.z - M.pred.z) < 2.2) M.nearDown = e; }
     }
-    const b = $('#bPick'); if (M.nearW) { b.hidden = false; b.innerHTML = `Pegar ${WEAP[M.nearW.w.t].n} ${RAR[M.nearW.w.r].n.toLowerCase()}<kbd>E</kbd>`; } else b.hidden = true;
+    const b = $('#bPick'); if (M.nearW) { b.hidden = false; b.innerHTML = `PEGAR ${WEAP[M.nearW.w.t].n} <small>${RAR[M.nearW.w.r].n}</small><kbd>E</kbd>`; } else b.hidden = true;
+    $('#tProne').classList.toggle('on', M.prone); $('#tSprint').classList.toggle('on', !!M.sprintLock);
     $('#bRev').hidden = !M.nearDown; if (!M.nearDown && M.rev) setRev(false);
     $('#tAds').classList.toggle('on', M.ads); $('#tCrouch').classList.toggle('on', M.crouch);
     if (MODES[M.mode].size > 1) {
@@ -583,12 +636,12 @@
       M.ents = viewEnts();
       hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); }
       mmT -= dt; if (mmT <= 0) { mmT = .25; drawMap($('#mm'), false); if (!$('#bigmap').hidden) drawMap($('#bm'), true); }
-    } else drawMenu(dt);
+    } else { drawMenu(dt); if (!$('#lobby').hidden) preview.render(now / 1000); }
     requestAnimationFrame(loop);
   }
   // usado nos testes automáticos
   window.__look = (yaw, pitch) => { if (M) { M.yaw = yaw; M.pitch = pitch; } };
-  window.__dbg = () => M && { chute: M.chars.get(M.me) && M.chars.get(M.me).userData.chute.visible, p: M.pred, me: M.me$, yaw: M.yaw, pitch: M.pitch, pending: M.pending.length, planeT: M.planeT };
+  window.__dbg = () => M && { mProne: M.prone, mCrouch: M.crouch, chute: M.chars.get(M.me) && M.chars.get(M.me).userData.chute.visible, p: M.pred, me: M.me$, yaw: M.yaw, pitch: M.pitch, pending: M.pending.length, planeT: M.planeT };
   setupMenuScene();
   requestAnimationFrame(loop);
   boot();

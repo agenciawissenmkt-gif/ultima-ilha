@@ -315,23 +315,24 @@ window.GFX = (function () {
 
     // ---------- soldados ----------
     const SKIN = [0xe0b48a, 0xc68c5e, 0x8d5a3b, 0xf0c8a0];
-    const UNIFORMS = [[0x5b6342, 0x3e4430], [0x8a7350, 0x5d4d35], [0x2e3033, 0x1c1d1f], [0x5c6166, 0x3c4045], [0x4a5a3a, 0x30392a], [0xa08a62, 0x6e5f44], [0x6d3a32, 0x3e2420], [0x3d4b5c, 0x262f3a]];
-    function nameSprite(text, color) {
+    const PANTS = SH.PANTS;
+    function textSprite(text, color, w, h, size) {
       const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d');
-      g.font = '700 30px "Chakra Petch", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.lineWidth = 6; g.strokeStyle = 'rgba(0,0,0,.7)'; g.strokeText(text, 128, 32); g.fillStyle = color; g.fillText(text, 128, 32);
+      g.font = `700 ${size || 30}px "Chakra Petch", sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.lineWidth = 6; g.strokeStyle = 'rgba(0,0,0,.75)'; g.strokeText(text, 128, 32); g.fillStyle = color; g.fillText(text, 128, 32);
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, transparent: true }));
-      sp.scale.set(2.2, .55, 1); sp.position.y = 2.3; sp.renderOrder = 10; return sp;
+      sp.scale.set(w || 2.2, h || .55, 1); sp.renderOrder = 10; return sp;
     }
-    G.makeChar = function (id, kind, name) {
-      // kind: 'me' | 'mate' | 'enemy'
-      const uni = kind === 'enemy' ? UNIFORMS[id % UNIFORMS.length] : kind === 'me' ? [0x3b4a3a, 0x2a3329] : [0x3d4b5c, 0x262f3a];
-      const vestC = kind === 'me' ? 0x8a7a52 : kind === 'mate' ? 0x2f6f8f : uni[1];
-      const mk = c => std(c, { roughness: .9 });
-      const cloth = mk(uni[0]), pants = mk(uni[1]), vest = mk(vestC), skin = mk(SKIN[id % SKIN.length]), boots = mk(0x2a2420), gear = mk(0x2b2d2a), helm = mk(kind === 'enemy' ? uni[1] : vestC);
+    // skins: soldado, guerreiro, bruxa, ninja, pirata
+    G.makeChar = function (id, kind, name, look) {
+      look = look || {}; const sk = SH.SKINS[look.s] ? look.s : 'soldado', pc = PANTS[look.c] !== undefined ? PANTS[look.c] : PANTS[0];
+      const mk = (c, o) => std(c, Object.assign({ roughness: .9 }, o || {}));
+      const metal = mk(0xb8bcc2, { metalness: .85, roughness: .3 }), gold = mk(0xc9a240, { metalness: .8, roughness: .35 });
+      const shirtC = { soldado: 0x4a5a3a, guerreiro: 0x7a2a22, bruxa: 0x4a2a6a, ninja: 0x1a1a1e, pirata: 0xe4ddd0 }[sk];
+      const cloth = mk(shirtC), pants = mk(pc), skin = mk(SKIN[id % SKIN.length]), boots = mk(sk === 'guerreiro' ? 0x5a4030 : 0x2a2420), gear = mk(0x2b2d2a);
       const g = new THREE.Group();
-      const add = (parent, geo, mat, x, y, z, sx, sy, sz, rx) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); if (sx) m.scale.set(sx, sy, sz); if (rx) m.rotation.x = rx; m.castShadow = true; parent.add(m); return m; };
-      const cy = (r1, r2, h) => new THREE.CylinderGeometry(r1, r2, h, 8);
+      const add = (parent, geo, mat, x, y, z, sx, sy, sz, rx, rz) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); if (sx) m.scale.set(sx, sy, sz); if (rx) m.rotation.x = rx; if (rz) m.rotation.z = rz; m.castShadow = true; parent.add(m); return m; };
+      const cy = (r1, r2, h, n) => new THREE.CylinderGeometry(r1, r2, h, n || 8);
       const hips = new THREE.Group(); hips.position.y = .92; g.add(hips);
       add(hips, box, pants, 0, 0, 0, .36, .2, .22);
       const legs = [-.1, .1].map(x => {
@@ -340,79 +341,151 @@ window.GFX = (function () {
         const kn = new THREE.Group(); kn.position.y = -.44; th.add(kn);
         add(kn, cy(.072, .06, .42), pants, 0, -.21, 0);
         add(kn, box, boots, 0, -.44, -.04, .12, .09, .24);
+        if (sk === 'guerreiro') add(kn, cy(.08, .07, .3), metal, 0, -.18, -.01);
         return { th, kn };
       });
       const chest = new THREE.Group(); chest.position.y = .1; hips.add(chest);
       const torso = add(chest, cy(.2, .17, .5), cloth, 0, .27, 0, 1, 1, .7);
-      add(chest, box, vest, 0, .3, 0, .42, .38, .3);
-      add(chest, box, gear, 0, .2, -.16, .3, .12, .05); // porta-carregadores
-      add(chest, box, gear, 0, .3, .23, .32, .42, .17); // mochila
       add(chest, cy(.06, .06, .1), skin, 0, .57, 0);
       const head = new THREE.Group(); head.position.y = .72; chest.add(head);
-      add(head, new THREE.SphereGeometry(.13, 12, 10), skin, 0, 0, 0, 1, 1.08, 1);
-      add(head, new THREE.SphereGeometry(.145, 12, 8, 0, TAU, 0, Math.PI / 2), helm, 0, .02, 0);
-      add(head, box, mk(0x111214), 0, .01, -.115, .2, .05, .03); // óculos
+      add(head, new THREE.SphereGeometry(.13, 12, 10), sk === 'ninja' ? mk(0x1a1a1e) : skin, 0, 0, 0, 1, 1.08, 1);
+      if (sk === 'soldado') {
+        add(chest, box, mk(0x8a7a52), 0, .3, 0, .42, .38, .3);
+        add(chest, box, gear, 0, .2, -.16, .3, .12, .05);
+        add(head, new THREE.SphereGeometry(.145, 12, 8, 0, TAU, 0, Math.PI / 2), mk(0x56603e), 0, .02, 0);
+        add(head, box, mk(0x111214), 0, .01, -.115, .2, .05, .03);
+      } else if (sk === 'guerreiro') {
+        add(chest, box, metal, 0, .32, -.03, .44, .4, .3);
+        for (const sx of [-.24, .24]) add(chest, new THREE.SphereGeometry(.11, 10, 8), metal, sx, .5, 0, 1, .7, 1);
+        add(head, new THREE.SphereGeometry(.15, 12, 8, 0, TAU, 0, Math.PI / 1.7), metal, 0, .01, 0);
+        add(head, box, mk(0xb3261e), 0, .2, .02, .03, .12, .26);
+        add(head, box, gold, 0, -.01, -.13, .03, .14, .02);
+        const cape = add(chest, new THREE.PlaneGeometry(.5, .9), mk(0x9e1f1a, { side: THREE.DoubleSide }), 0, .1, .2, 1, 1, 1, .12);
+        cape.userData.cape = true;
+      } else if (sk === 'bruxa') {
+        add(hips, new THREE.ConeGeometry(.34, .75, 12, 1, true), mk(0x3a1f55, { side: THREE.DoubleSide }), 0, -.3, 0);
+        add(chest, box, mk(0x2a1640), 0, .14, 0, .4, .08, .3);
+        add(head, cy(.3, .3, .02, 18), mk(0x22122f), 0, .08, 0);
+        add(head, new THREE.ConeGeometry(.15, .5, 12), mk(0x22122f), .03, .32, .03, 1, 1, 1, -.15, -.2);
+        add(head, box, mk(0x7a4ab0), 0, .11, 0, .3, .03, .3);
+        for (const sx of [-.1, .1]) add(head, box, mk(0x9a9a40), sx, -.06, .02, .05, .22, .1);
+      } else if (sk === 'ninja') {
+        add(head, box, skin, 0, .02, -.115, .17, .05, .03);
+        add(head, cy(.135, .135, .05, 14), mk(0xc4262a), 0, .07, 0);
+        add(head, box, mk(0xc4262a), 0, .06, .16, .03, .03, .14, .5);
+        add(chest, box, mk(0x2a2a30), 0, .1, 0, .38, .07, .26);
+        add(chest, box, mk(0x8a8a90, { metalness: .8, roughness: .2 }), .05, .38, .2, .03, .85, .05, 0, .6);
+      } else {
+        add(chest, box, mk(0x6b4a2b), 0, .3, -.02, .42, .4, .3);
+        add(head, new THREE.SphereGeometry(.14, 12, 8, 0, TAU, 0, Math.PI / 2), mk(0xb3261e), 0, .02, 0);
+        add(head, box, mk(0x111111), -.05, .02, -.12, .06, .05, .02);
+        add(chest, box, gold, 0, .1, -.14, .38, .05, .02);
+      }
+      // mochila: o tamanho acompanha o nível
+      const pack = add(chest, box, sk === 'bruxa' ? mk(0x4a3a2a) : gear, 0, .3, .24, .3, .36, .15);
       const arms = new THREE.Group(); arms.position.set(0, .48, 0); chest.add(arms);
+      const glove = mk(sk === 'guerreiro' ? 0x7a6a50 : 0x1e1f1d);
       const ra = add(arms, cy(.055, .05, .42), cloth, .2, -.06, -.16, 1, 1, 1, Math.PI / 2 - .3);
       const la = add(arms, cy(.055, .05, .46), cloth, -.12, -.06, -.24, 1, 1, 1, Math.PI / 2 - .2);
       ra.rotation.z = .25; la.rotation.z = -.5;
-      add(arms, new THREE.SphereGeometry(.05, 8, 6), mk(0x1e1f1d), .12, -.11, -.36);
-      add(arms, new THREE.SphereGeometry(.05, 8, 6), mk(0x1e1f1d), .02, -.08, -.5);
+      const rh = add(arms, new THREE.SphereGeometry(.05, 8, 6), glove, .12, -.11, -.36);
+      add(arms, new THREE.SphereGeometry(.05, 8, 6), glove, .02, -.08, -.5);
       const gunHolder = new THREE.Group(); gunHolder.position.set(.1, -.06, -.36); arms.add(gunHolder);
       const chute = new THREE.Mesh(new THREE.SphereGeometry(1.8, 14, 6, 0, TAU, 0, Math.PI / 2.6), std(kind === 'enemy' ? 0xb05a3a : 0x4a7a9a, { side: THREE.DoubleSide, roughness: .7 }));
       chute.position.y = 3.9; chute.visible = false; g.add(chute);
       const blob = new THREE.Mesh(new THREE.CircleGeometry(.45, 14), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: .25, depthWrite: false }));
       blob.rotation.x = -Math.PI / 2;
       const root = new THREE.Group(); root.add(g, blob);
-      if (name) root.add(nameSprite(name, kind === 'mate' ? '#6fe0ff' : '#ffffff'));
-      root.userData = { g, hips, legs, chest, arms, gunHolder, gunType: -1, chute, blob, torso, cloth, phase: Math.random() * 6 };
+      if (name) { const t = textSprite(name, '#6fe0ff'); t.position.y = 2.35; root.add(t); }
+      if (kind === 'mate') { const d = textSprite('▼', '#37c6ff', .5, .5, 40); d.position.y = 2.05; root.add(d); }
+      root.userData = { g, hips, legs, chest, arms, gunHolder, gunType: -2, chute, blob, torso, cloth, pack, phase: Math.random() * 6, punch: 0 };
       scene.add(root); return root;
     };
+    const PACK = [[.24, .22, .09], [.3, .36, .15], [.34, .44, .19], [.38, .52, .24]];
     G.poseChar = function (ch, s, dt) {
       const u = ch.userData, f = s.f, moving = (f & 128) && !(f & 66);
       ch.position.set(s.x, s.y, s.z);
       u.g.rotation.set(0, s.yaw, 0); u.g.position.y = 0;
       u.chute.visible = !!(f & 64);
-      u.phase += dt * (moving ? 10 : 0);
-      const sw = moving ? Math.sin(u.phase) * .55 : 0;
-      let hipY = .92, bend = 0;
+      const run = moving && !(f & (16 | 256));
+      u.phase += dt * (moving ? ((f & 256) ? 4 : run ? 11 : 7) : 0);
+      const sw = moving ? Math.sin(u.phase) * ((f & 256) ? .25 : .6) : 0;
+      let hipY = .92, bend = 0, lean = 0;
+      u.legs[0].th.rotation.z = u.legs[1].th.rotation.z = 0;
       if (f & 2) { u.g.rotation.x = -1.2; u.g.position.y = .9; }
       else if (f & 1) { u.g.rotation.x = -1.4; u.g.position.y = .25; }
+      else if (f & 256) { u.g.rotation.x = -1.45; u.g.position.y = .22; }
+      else if (f & 512) { hipY = .5; lean = .55; }
       else if (f & 16) { hipY = .62; bend = 1.1; }
-      u.hips.position.y = hipY + (moving ? Math.abs(Math.cos(u.phase)) * .04 : 0);
-      u.legs[0].th.rotation.x = sw - bend; u.legs[1].th.rotation.x = -sw - bend * .6;
-      u.legs[0].kn.rotation.x = Math.max(0, -sw) * .9 + bend * 1.6; u.legs[1].kn.rotation.x = Math.max(0, sw) * .9 + bend * 1.3;
-      u.chest.rotation.x = (f & 16) ? .15 : 0;
-      u.arms.rotation.x = (f & 1) ? 0 : s.pitch;
+      else if (!s.onG && s.air) { bend = .5; }
+      u.hips.position.y = hipY + (run ? Math.abs(Math.cos(u.phase)) * .05 : 0);
+      if (f & 512) { u.legs[0].th.rotation.x = -1.3; u.legs[1].th.rotation.x = -.6; u.legs[0].kn.rotation.x = .1; u.legs[1].kn.rotation.x = 1.4; }
+      else {
+        u.legs[0].th.rotation.x = sw - bend; u.legs[1].th.rotation.x = -sw - bend * .6;
+        u.legs[0].kn.rotation.x = Math.max(0, -sw) * .9 + bend * 1.6; u.legs[1].kn.rotation.x = Math.max(0, sw) * .9 + bend * 1.3;
+      }
+      u.chest.rotation.x = (f & 16) ? .15 : lean;
+      // braços: mira acompanha o olhar; de mão livre balança ao correr e dá soco
+      u.punch = (f & 1024) ? Math.min(1, u.punch + dt * 14) : Math.max(0, u.punch - dt * 6);
+      const unarmed = s.wt < 0;
+      u.arms.rotation.x = (f & 1) ? 0 : (f & 256) ? -.1 : unarmed ? (run ? -.6 + Math.sin(u.phase) * .3 : -.35) : s.pitch;
+      u.arms.position.z = -u.punch * .25;
       u.blob.position.y = Math.max(0, (s.ground ?? s.y) - s.y) + .04; u.blob.visible = !(f & 2);
       u.cloth.emissive.setHex((f & 8) ? 0x661a1a : 0);
+      const pk = PACK[Math.max(0, Math.min(3, s.bag | 0))]; u.pack.scale.set(pk[0], pk[1], pk[2]); u.pack.position.z = .16 + pk[2] / 2;
       if (s.wt !== u.gunType) {
         u.gunHolder.clear(); u.gunType = s.wt;
         if (s.wt >= 0) u.gunHolder.add(makeGun(SH.WK[s.wt]));
       }
     };
+    // prévia da skin no lobby
+    G.makePreview = function (canvas) {
+      const r = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+      const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xffffff, 0x445533, 1.1)); const dl = new THREE.DirectionalLight(0xffffff, .8); dl.position.set(2, 4, 3); sc.add(dl);
+      const cam = new THREE.PerspectiveCamera(32, 1, .1, 20); cam.position.set(0, 1.25, 4.3); cam.lookAt(0, .95, 0);
+      let ch = null, look = null; const realScene = scene;
+      return {
+        set(l) {
+          look = l; if (ch) sc.remove(ch);
+          ch = G.makeChar(7, 'me', '', l); realScene.remove(ch); sc.add(ch);
+          G.poseChar(ch, { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, f: 0, wt: 3, wr: 2, bag: 2 }, 0);
+        },
+        render(t) { if (!ch) return; const w = canvas.clientWidth, h = canvas.clientHeight; if (!w) return; if (canvas.width !== w * r.getPixelRatio() | 0) { r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); } ch.rotation.y = t * .6; r.render(sc, cam); }
+      };
+    };
 
     // ---------- itens no chão ----------
+    const ITEM_NAME = it => it.k === 'w' ? SH.WEAP[it.w.t].n : it.k === 'ammo' ? `Munição ${it.n}` : it.k === 'med' ? 'Kit médico' : it.k === 'shield' ? 'Colete' : it.k === 'm2' ? 'Mira 2x' : it.k === 'm4' ? 'Mira 4x' : it.k === 'bag' ? `Mochila Nv.${it.n}` : '';
+    G.itemName = ITEM_NAME;
     G.makeItem = function (it) {
       const g = new THREE.Group();
-      if (it.k === 'w') { const gun = makeGun(it.w.t); gun.rotation.set(0, 0, Math.PI / 2); gun.scale.setScalar(1.4); g.add(gun); }
+      if (it.k === 'w') { const gun = makeGun(it.w.t); gun.rotation.set(0, 0, Math.PI / 2); gun.scale.setScalar(1.6); g.add(gun); }
       else if (it.k === 'm2' || it.k === 'm4') {
         const b = new THREE.Mesh(new THREE.CylinderGeometry(.045, .06, .32, 10), std(0x1d1f21, { metalness: .5, roughness: .4 })); b.rotation.x = Math.PI / 2; g.add(b);
         const l = new THREE.Mesh(new THREE.CircleGeometry(.05, 10), std(it.k === 'm4' ? 0xb56cff : 0x4aa8ff, { emissive: it.k === 'm4' ? 0x3a1a66 : 0x10305a, metalness: .3, roughness: .1 })); l.position.z = .161; g.add(l);
       } else if (it.k === 'ammo') {
-        const b = new THREE.Mesh(box, std(0x4b5a3a)); b.scale.set(.42, .22, .26); g.add(b);
-        const s = new THREE.Mesh(box, std(0xd8b63a, { metalness: .4 })); s.scale.set(.44, .05, .28); s.position.y = .03; g.add(s);
+        for (let k = 0; k < 2; k++) { const b = new THREE.Mesh(box, std(0x4b5a3a)); b.scale.set(.4, .2, .25); b.position.set(0, k * .21, k * .02); g.add(b); const s = new THREE.Mesh(box, std(0xd8b63a, { metalness: .4 })); s.scale.set(.42, .05, .27); s.position.set(0, k * .21 + .03, k * .02); g.add(s); }
       } else if (it.k === 'med') {
         const b = new THREE.Mesh(box, std(0xeeeeea)); b.scale.set(.38, .22, .28); g.add(b);
         for (const [sx, sz] of [[.24, .07], [.07, .2]]) { const x = new THREE.Mesh(box, std(0xc93232)); x.scale.set(sx, .02, sz); x.position.y = .115; g.add(x); }
+      } else if (it.k === 'bag') {
+        const pk = PACK[it.n] || PACK[1]; const b = new THREE.Mesh(box, std([0, 0x5b6342, 0x3d4b5c, 0x6d3a32][it.n] || 0x5b6342)); b.scale.set(pk[0] * 1.3, pk[1] * 1.3, pk[2] * 1.3); g.add(b);
+        const fl = new THREE.Mesh(box, std(0x2b2d2a)); fl.scale.set(pk[0] * 1.32, .08, pk[2] * 1.35); fl.position.y = pk[1] * .5; g.add(fl);
       } else {
-        const b = new THREE.Mesh(new THREE.CylinderGeometry(.11, .11, .36, 12), std(0x2f86c4, { metalness: .3, roughness: .3, emissive: 0x0a2440 })); g.add(b);
-        const c2 = new THREE.Mesh(new THREE.CylinderGeometry(.07, .07, .06, 10), std(0xdddddd)); c2.position.y = .21; g.add(c2);
+        const b = new THREE.Mesh(box, std(0x2f5a8a, { roughness: .6 })); b.scale.set(.42, .48, .14); g.add(b);
+        const c2 = new THREE.Mesh(box, std(0x1d2a3a)); c2.scale.set(.44, .08, .16); c2.position.y = .12; g.add(c2);
       }
       g.traverse(o => { if (o.isMesh) o.castShadow = true; });
-      const ring = new THREE.Mesh(new THREE.RingGeometry(.4, .5, 20), new THREE.MeshBasicMaterial({ color: it.k === 'w' ? SH.RAR[it.w.r].c : 0xfff2b0, transparent: true, opacity: .65, side: THREE.DoubleSide, depthWrite: false }));
+      const col = it.k === 'w' ? SH.RAR[it.w.r].c : it.k === 'ammo' ? '#ffd23a' : it.k === 'bag' ? '#9be85a' : '#fff2b0';
+      const ring = new THREE.Mesh(new THREE.RingGeometry(.4, .5, 20), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .7, side: THREE.DoubleSide, depthWrite: false }));
       ring.rotation.x = -Math.PI / 2; ring.position.y = -.33;
       const root = new THREE.Group(); root.add(g, ring); root.userData.spin = g;
+      // feixe de luz e nome, para achar o loot de longe
+      if (it.k === 'w' || it.k === 'bag' || it.k === 'm4') {
+        const beam = new THREE.Mesh(new THREE.CylinderGeometry(.06, .2, 4, 8, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .22, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+        beam.position.y = 1.6; root.add(beam);
+      }
+      const label = textSprite(ITEM_NAME(it), col, 1.6, .4, 28); label.position.y = .75; root.add(label); root.userData.label = label;
       root.position.set(it.x, it.y + .4, it.z); scene.add(root); return root;
     };
 

@@ -19,8 +19,12 @@ As estatísticas (partidas, vitórias, abates) ficam em `data/stats.json`.
 
 ## Controles
 
-- PC: clique na tela para controlar a câmera. WASD anda, Shift corre, Espaço pula, C agacha, botão direito mira, botão esquerdo atira, R recarrega, H cura, Q troca de arma, E pega arma, F reanima, M abre o mapa.
-- Celular: joystick à esquerda, arraste à direita para olhar, botões de atirar, mirar, pular e agachar.
+- PC: clique na tela para controlar a câmera. WASD anda, Shift ou Ctrl corre, Espaço pula, C agacha (correndo + C = deslize),
+  Z deita, botão direito mira, botão esquerdo atira, 1 e 2 escolhem a arma, 3 deixa de mão livre (corre mais e dá soco),
+  Q alterna, R recarrega, H cura, E pega arma do chão, F reanima, M abre o mapa.
+- Celular: joystick à esquerda, arraste à direita para olhar, botões de atirar, mirar, pular, agachar, deitar e correr.
+- Assistência de mira (liga e desliga em Ajustes): a mira gruda no inimigo e, atirando, puxa do peito para a cabeça.
+- Skins no lobby: Soldado, Guerreiro, Bruxa, Ninja e Pirata, com 6 cores de calça. Mochilas Nv.1 a 3 aumentam a munição e a cura que dá para carregar.
 
 ## Rodar no seu computador
 

@@ -1,6 +1,7 @@
 // Simulação de uma partida em 3D. O servidor é a autoridade: movimento, tiros, dano, bots e tempestade rodam aqui.
 const SH = require('../public/shared.js');
-const { W, WEAP, WK, RAR, PH, MAX_PLAYERS, PLANE_Y, clamp } = SH;
+const { W, WEAP, WK, RAR, PH, BAG, MAX_PLAYERS, PLANE_Y, clamp } = SH;
+const HANDS = 2; // posição 2 = mão livre (sem arma)
 
 const BOT_NAMES = ['Zé Bala', 'Tchola', 'NinjaBR', 'Sapo', 'Kaique', 'Bia', 'Duda', 'Vovó Sniper', 'Pastel', 'Lagartixa', 'Mandioca',
   'Xerife', 'Juju', 'Tigrão', 'Capivara', 'Biscoito', 'Faísca', 'Ratatá', 'Cuscuz', 'Pipoca', 'Marreta', 'Tainá', 'Sombra', 'Coxinha',
@@ -20,6 +21,7 @@ function randWeapon(minR = 0) {
   r = Math.max(r, minR);
   return { t, r, mag: WEAP[t].mag };
 }
+const randBag = () => { const q = Math.random(); return q < .6 ? 1 : q < .9 ? 2 : 3; };
 const score = w => w ? WEAP[w.t].tier + w.r * .9 : -1;
 const angDiff = (a, b) => { let d = b - a; while (d > Math.PI) d -= TAU; while (d < -Math.PI) d += TAU; return d; };
 
@@ -41,7 +43,7 @@ class Match {
     const botName = () => names[ni++ % names.length];
     for (const g of groups) {
       const team = this.newTeam();
-      for (const u of g) { const e = this.addEnt(team, u.name, false); e.userId = u.id; this.userEnt.set(u.id, e); }
+      for (const u of g) { const e = this.addEnt(team, u.name, false); e.userId = u.id; e.look = u.look || e.look; this.userEnt.set(u.id, e); }
       while (team.members.length < this.size) this.addEnt(team, botName(), true);
     }
     while (this.teams.length < this.maxTeams) {
@@ -59,8 +61,8 @@ class Match {
 
     for (const sp of this.world.spots) {
       const q = Math.random();
-      const k = q < .33 ? 'w' : q < .6 ? 'ammo' : q < .73 ? 'med' : q < .85 ? 'shield' : q < .94 ? 'm2' : 'm4';
-      this.addItem(sp.x, sp.y, sp.z, k, k === 'w' ? { w: randWeapon() } : k === 'ammo' ? { n: Math.round(R(25, 45)) } : {}, true);
+      const k = q < .36 ? 'w' : q < .62 ? 'ammo' : q < .72 ? 'med' : q < .81 ? 'shield' : q < .87 ? 'm2' : q < .91 ? 'm4' : 'bag';
+      this.addItem(sp.x, sp.y, sp.z, k, k === 'w' ? { w: randWeapon() } : k === 'ammo' ? { n: Math.round(R(30, 60)) } : k === 'bag' ? { n: randBag() } : {}, true);
     }
   }
 
@@ -69,9 +71,10 @@ class Match {
     const e = {
       id: this.ents.length, team: team.id, name, bot, human: !bot, userId: null,
       x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, onG: false, fly: 0, crouch: false, ads: false, yaw: 0, pitch: 0,
-      hp: 100, sh: 0, weapons: [{ t: 'pistola', r: 0, mag: 12 }, null], cur: 0, ammo: 48, meds: 0, scope: 0, kills: 0,
+      hp: 100, sh: 0, weapons: [{ t: 'pistola', r: 0, mag: 12 }, null], cur: 0, ammo: 48, meds: 0, scope: 0, bag: 0, kills: 0,
       alive: true, landed: false, reloadT: 0, fireT: 0, healT: 0, moving: false, downed: false, knockedBy: null, revT: 0,
       wantRev: false, fire: false, dropT: 2, inputs: [], ack: 0, stormT: 0, hitT: 0, last: { mx: 0, mz: 0, yaw: 0, j: 0, c: 0, sp: 0, ads: 0 },
+      look: { s: Object.keys(SH.SKINS)[Math.floor(Math.random() * 5)], c: Math.floor(Math.random() * SH.PANTS.length) },
       ai: { tx: 0, tz: 0, target: null, think: R(0, .3), react: 0, strafe: 1, strafeT: 0, stuck: 0, provoked: 0, err: .1 }
     };
     this.ents.push(e); team.members.push(e); return e;
@@ -104,7 +107,7 @@ class Match {
     this.conns.set(e.id, conn); e.bot = false; e.inputs = [];
     conn.send({
       t: 'm', id: this.id, seed: this.seed, mode: this.mode, me: e.id, team: e.team,
-      names: this.ents.map(o => [o.name, o.team, o.bot && !o.userId ? 1 : 0]),
+      names: this.ents.map(o => [o.name, o.team, o.bot && !o.userId ? 1 : 0, o.look.s, o.look.c]),
       plane: this.plane, items: [...this.items.values()].map(it => this.packItem(it)), chests: [...this.chestOpen], totalTeams: this.teams.length
     });
     if (this.teams[e.team].elim) this.sendResult(e);
@@ -123,7 +126,7 @@ class Match {
     if (m.t === 'i') {
       if (e.inputs.length > 12) e.inputs.shift();
       const num = (v, a, b) => Number.isFinite(+v) ? clamp(+v, a, b) : 0;
-      e.inputs.push({ s: m.s | 0, mx: num(m.mx, -1, 1), mz: num(m.mz, -1, 1), yaw: num(m.yaw, -1e4, 1e4), ay: num(m.ay === undefined ? m.yaw : m.ay, -1e4, 1e4), pitch: num(m.pitch, -1.5, 1.5), j: m.j ? 1 : 0, c: m.c ? 1 : 0, sp: m.sp ? 1 : 0, ads: m.ads ? 1 : 0, f: m.f ? 1 : 0 });
+      e.inputs.push({ s: m.s | 0, mx: num(m.mx, -1, 1), mz: num(m.mz, -1, 1), yaw: num(m.yaw, -1e4, 1e4), ay: num(m.ay === undefined ? m.yaw : m.ay, -1e4, 1e4), pitch: num(m.pitch, -1.5, 1.5), j: m.j ? 1 : 0, c: m.c ? 1 : 0, p: m.p ? 1 : 0, h: m.h ? 1 : 0, sp: m.sp ? 1 : 0, ads: m.ads ? 1 : 0, f: m.f ? 1 : 0 });
       return;
     }
     if (m.t !== 'a' || !e.alive) return;
@@ -132,6 +135,7 @@ class Match {
       case 'swap': this.swap(e); break;
       case 'w0': e.cur = 0; e.reloadT = 0; break;
       case 'w1': if (e.weapons[1]) { e.cur = 1; e.reloadT = 0; } break;
+      case 'w2': e.cur = HANDS; e.reloadT = 0; break;
       case 'reload': this.startReload(e); break;
       case 'heal': this.startHeal(e); break;
       case 'pick': this.pickNear(e); break;
@@ -144,7 +148,10 @@ class Match {
     e.x = clamp(x === undefined ? this.plane.x : x, 10, W - 10); e.z = clamp(z === undefined ? this.plane.z : z, 10, W - 10);
     e.y = PLANE_Y - 4; e.fly = 1; e.landed = true; e.vx = e.vy = e.vz = 0; e.onG = false;
   }
-  swap(e) { const o = 1 - e.cur; if (e.weapons[o]) { e.cur = o; e.reloadT = 0; } }
+  swap(e) {
+    // alterna arma 1 -> arma 2 -> mão livre, pulando espaços vazios
+    for (let k = 1; k <= 3; k++) { const o = (e.cur + k) % 3; if (o === HANDS || e.weapons[o]) { e.cur = o; e.reloadT = 0; return; } }
+  }
   startReload(e) {
     const w = e.weapons[e.cur];
     if (!w || e.downed || e.reloadT > 0 || e.ammo <= 0 || w.mag >= WEAP[w.t].mag) return;
@@ -159,11 +166,25 @@ class Match {
       if (d < bd) { bd = d; best = it; }
     }
     if (!best) return;
-    const old = e.weapons[e.cur]; e.weapons[e.cur] = best.w; this.removeItem(best);
+    const empty = e.weapons.indexOf(null), slot = empty >= 0 ? empty : e.cur === HANDS ? 0 : e.cur;
+    const old = e.weapons[slot]; e.weapons[slot] = best.w; e.cur = slot; e.reloadT = 0; this.removeItem(best);
     if (old) this.dropItem(e, 'w', { w: old });
   }
 
+  punch(e) {
+    if (e.downed || e.fly || e.fireT > 0 || e.healT > 0) return;
+    e.fireT = .6; e.punchT = .3;
+    const ox = e.x, oy = e.y + SH.eyeOf(e), oz = e.z, [dx, dy, dz] = SH.dirOf(e.aimYaw === undefined || e.bot ? e.yaw : e.aimYaw, e.pitch);
+    let best = null, bt = 1.9;
+    for (const o of this.ents) {
+      if (o === e || !o.alive || !o.landed || o.fly || o.team === e.team || Math.abs(o.x - ox) > 3 || Math.abs(o.z - oz) > 3) continue;
+      const h = SH.rayPlayer(o, ox, oy, oz, dx, dy, dz); if (h && h.t < bt) { bt = h.t; best = [o, h.head]; }
+    }
+    if (best) this.hurt(best[0], best[1] ? 32 : 20, e, 'Soco', best[1]);
+  }
+
   fire(e) {
+    if (e.cur === HANDS) return this.punch(e);
     const w = e.weapons[e.cur];
     if (!w || e.downed || e.fly || e.reloadT > 0 || e.fireT > 0 || e.healT > 0) return;
     if (w.mag <= 0) { this.startReload(e); return; }
@@ -219,6 +240,7 @@ class Match {
     if (e.ammo > 0) this.dropItem(e, 'ammo', { n: Math.max(20, e.ammo) });
     for (let i = 0; i < e.meds; i++) this.dropItem(e, 'med', {});
     if (e.scope) this.dropItem(e, e.scope === 4 ? 'm4' : 'm2', {});
+    if (e.bag) this.dropItem(e, 'bag', { n: e.bag });
     this.broadcast({ t: 'x', id: e.id, x: r2(e.x), y: r2(e.y), z: r2(e.z) });
     this.checkTeam(this.teams[e.team]);
   }
@@ -254,8 +276,13 @@ class Match {
     if (e.downed || e.fly) return;
     for (const it of this.items.values()) {
       if ((it.x - e.x) ** 2 + (it.z - e.z) ** 2 > 1.7 * 1.7 || Math.abs(it.y - e.y) > 1.6) continue;
-      if (it.k === 'ammo') { e.ammo += it.n; this.removeItem(it); }
-      else if (it.k === 'med' && e.meds < 4) { e.meds++; this.removeItem(it); }
+      if (it.k === 'ammo') {
+        const room = BAG.ammo[e.bag] - e.ammo; if (room <= 0) continue;
+        const take = Math.min(room, it.n); e.ammo += take; this.removeItem(it);
+        if (take < it.n) this.addItem(it.x, it.y, it.z, 'ammo', { n: it.n - take });
+      }
+      else if (it.k === 'med' && e.meds < BAG.meds[e.bag]) { e.meds++; this.removeItem(it); }
+      else if (it.k === 'bag' && it.n > e.bag) { if (e.bag) this.dropItem(e, 'bag', { n: e.bag }); e.bag = it.n; this.removeItem(it); }
       else if (it.k === 'shield' && e.sh < 100) { e.sh = Math.min(100, e.sh + 50); this.removeItem(it); }
       else if ((it.k === 'm2' || it.k === 'm4') && (it.k === 'm4' ? 4 : 2) > e.scope) {
         if (e.scope) this.dropItem(e, e.scope === 4 ? 'm4' : 'm2', {});
@@ -282,7 +309,7 @@ class Match {
       for (let k = 0; k < (c.rare ? 2 : 1); k++) put('w', { w: randWeapon(c.rare ? 1 : 0) });
       put('ammo', { n: Math.round(R(30, 60)) });
       const q = Math.random();
-      if (q < .3) put('med', {}); else if (q < .55) put('shield', {}); else if (q < .7) put(Math.random() < .6 ? 'm2' : 'm4', {});
+      if (q < .25) put('med', {}); else if (q < .45) put('shield', {}); else if (q < .62) put(Math.random() < .6 ? 'm2' : 'm4', {}); else if (q < .8) put('bag', { n: randBag() });
     }
   }
 
@@ -421,6 +448,7 @@ class Match {
       if (e.fireT > 0) e.fireT -= dt; else e.fireT = 0;
       if (e.fire && !e.downed) this.fire(e);
       if (e.hitT > 0) e.hitT -= dt;
+      if (e.punchT > 0) e.punchT -= dt;
       if (e.reloadT > 0) {
         e.reloadT -= dt;
         if (e.reloadT <= 0) { const w = e.weapons[e.cur]; if (w) { const n = Math.min(WEAP[w.t].mag - w.mag, e.ammo); w.mag += n; e.ammo -= n; } }
@@ -467,15 +495,15 @@ class Match {
         const mate = o.team === me.team;
         if (!mate && Math.hypot(o.x - vx, o.z - vz) > 520) continue;
         const w = o.weapons[o.cur];
-        const flags = (o.downed ? 1 : 0) | (o.fly === 1 ? 2 : 0) | (o.healT > 0 ? 4 : 0) | (o.hitT > 0 ? 8 : 0) | (o.crouch ? 16 : 0) | (o.ads ? 32 : 0) | (o.fly === 2 ? 64 : 0) | (o.moving ? 128 : 0);
-        list.push([o.id, Math.round(o.x * 100), Math.round(o.y * 100), Math.round(o.z * 100), Math.round(o.yaw * 1000), Math.round(o.pitch * 1000), Math.round(o.hp), Math.round(o.sh), flags, w ? WK.indexOf(w.t) : -1, w ? w.r : 0, Math.round(o.revT * 10)]);
+        const flags = (o.downed ? 1 : 0) | (o.fly === 1 ? 2 : 0) | (o.healT > 0 ? 4 : 0) | (o.hitT > 0 ? 8 : 0) | (o.crouch ? 16 : 0) | (o.ads ? 32 : 0) | (o.fly === 2 ? 64 : 0) | (o.moving ? 128 : 0) | (o.prone ? 256 : 0) | (o.slideT > 0 ? 512 : 0) | (o.punchT > 0 ? 1024 : 0);
+        list.push([o.id, Math.round(o.x * 100), Math.round(o.y * 100), Math.round(o.z * 100), Math.round(o.yaw * 1000), Math.round(o.pitch * 1000), Math.round(o.hp), Math.round(o.sh), flags, w ? WK.indexOf(w.t) : -1, w ? w.r : 0, Math.round(o.revT * 10), o.bag]);
       }
       const ts = [];
       for (const t of tr) if (Math.abs(t[0] - vx) < 600 && Math.abs(t[2] - vz) < 600) ts.push(t);
       conn.send({
         t: 's', tk: this.tick, ack: me.ack,
         me: {
-          x: me.x, y: me.y, z: me.z, vx: me.vx, vy: me.vy, vz: me.vz, og: me.onG ? 1 : 0, fl: me.fly, cr: me.crouch ? 1 : 0,
+          x: me.x, y: me.y, z: me.z, vx: me.vx, vy: me.vy, vz: me.vz, og: me.onG ? 1 : 0, fl: me.fly, cr: me.crouch ? 1 : 0, pr: me.prone ? 1 : 0, st: me.slideT || 0, sdx: me.sdx || 0, sdz: me.sdz || 0, pc: me.prevC ? 1 : 0, ws: me.wasSprint ? 1 : 0, bag: me.bag,
           hp: Math.round(me.hp), sh: Math.round(me.sh), am: me.ammo, md: me.meds, sc: me.scope, cur: me.cur,
           w: me.weapons.map(w => w ? [WK.indexOf(w.t), w.r, w.mag] : 0), rl: me.reloadT > 0 ? 1 : 0, hl: Math.round(Math.max(0, me.healT) * 10) / 10,
           dn: me.downed ? 1 : 0, al: me.alive ? 1 : 0, ld: me.landed ? 1 : 0, k: me.kills, v: view.id
