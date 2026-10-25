@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Última Ilha</title>
-<meta name="description" content="Battle royale online leve, direto no navegador. Solo, dupla, trio, squad e quinteto.">
+<meta name="description" content="Battle royale online em 3D direto no navegador. Solo, dupla, trio, squad e quinteto.">
 <meta name="theme-color" content="#0f3440">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%236aa84f'/%3E%3Ccircle cx='32' cy='32' r='12' fill='%23ffc23a'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,7 +20,7 @@
 <section class="screen" id="login">
   <div class="panel">
     <h1>Última Ilha</h1>
-    <p>Battle royale online direto no navegador. Salte do avião com seu time, abra baús, pegue armas e seja o último de pé.</p>
+    <p>Battle royale online em 3D direto no navegador. Salte do avião com seu time, entre nas casas, suba as montanhas e seja o último de pé.</p>
     <div id="gbtn"></div>
     <form id="devForm" hidden>
       <label for="devName">Seu apelido</label>
@@ -36,6 +36,7 @@
     <header class="me">
       <img id="meAvatar" alt="" width="44" height="44">
       <div><b id="meName"></b><span id="meStats"></span></div>
+      <button class="btn ghost" data-open-settings>Configurações</button>
       <button class="btn ghost" id="logout">Sair</button>
     </header>
     <div class="card">
@@ -67,29 +68,67 @@
   <div class="tl">
     <div class="chips">
       <div class="chip">Vivos <b id="alive">50</b></div>
-      <div class="chip">Times <b id="teamsLeft">0</b></div>
       <div class="chip">Abates <b id="kills">0</b></div>
       <div class="chip zone" id="zoneChip"><span id="zoneLbl">Zona</span> <b id="zoneT">0:00</b></div>
     </div>
     <div id="mates"></div>
     <div id="feed"></div>
   </div>
-  <div class="tr"><canvas id="mm" width="248" height="248"></canvas><span class="ping" id="ping"></span></div>
+  <div class="compass" id="compass"><span id="compassTxt">N</span></div>
+  <div class="tr">
+    <canvas id="mm" width="256" height="256" title="Abrir mapa"></canvas>
+    <div class="row tiny"><button class="btn ghost" data-open-settings>⚙ Ajustes</button></div>
+    <span class="ping" id="ping"></span>
+  </div>
+
+  <div id="cross"><i class="ct"></i><i class="cb"></i><i class="cl"></i><i class="cr"></i><b></b></div>
+  <div id="hitmark"></div>
+  <div id="dmgnum"></div>
+  <div id="dmgdir"></div>
+  <div id="scope" hidden><div class="ring"></div><i class="h"></i><i class="v"></i><span id="scopeName"></span></div>
   <div id="msg"></div>
+  <div id="lockHint" hidden>Clique na tela para controlar a câmera</div>
+
   <button class="btn hot" id="jump" hidden>Saltar</button>
   <div class="bottom" id="bottom" hidden>
     <div class="actions">
-      <button class="btn hot" id="bRev" hidden>Reanimar (segure F)</button>
+      <button class="btn hot" id="bRev" hidden>Reanimar <kbd>F</kbd></button>
       <button class="btn hot" id="bPick" hidden>Pegar <kbd>E</kbd></button>
-      <button class="btn" id="bSwap">Trocar arma <kbd>Q</kbd></button>
+      <button class="btn" id="bSwap">Trocar <kbd>Q</kbd></button>
       <button class="btn" id="bReload">Recarregar <kbd>R</kbd></button>
       <button class="btn" id="bHeal">Curar <kbd>H</kbd></button>
     </div>
     <div class="slots"><div class="slot" id="s0"></div><div class="slot" id="s1"></div></div>
     <div class="bars"><div class="bar" id="shb"><i></i></div><div class="bar" id="hpb"><i></i></div></div>
   </div>
+  <!-- controles de toque -->
+  <div class="touch" id="touch" hidden>
+    <button class="tbtn fire" id="tFire" aria-label="Atirar"></button>
+    <button class="tbtn fire small" id="tFire2" aria-label="Atirar"></button>
+    <button class="tbtn" id="tAds">MIRA</button>
+    <button class="tbtn" id="tJump">PULAR</button>
+    <button class="tbtn" id="tCrouch">AGACHAR</button>
+  </div>
   <button class="btn ghost" id="leaveMatch" hidden>Voltar ao lobby</button>
 </div>
+
+<!-- Mapa grande -->
+<section class="screen dim" id="bigmap" hidden>
+  <div class="mapbox"><canvas id="bm" width="640" height="640"></canvas><button class="btn" id="closeMap">Fechar mapa <kbd>M</kbd></button></div>
+</section>
+
+<!-- Configurações -->
+<section class="screen dim" id="settings" hidden>
+  <div class="panel">
+    <h1 class="h2">Configurações</h1>
+    <div class="sens" id="sensList"></div>
+    <label class="opt" for="graf">Gráficos
+      <select id="graf"><option value="baixo">Baixo (mais leve)</option><option value="medio">Médio</option><option value="alto">Alto</option></select>
+    </label>
+    <label class="opt chk" for="adsHold"><input type="checkbox" id="adsHold"> Segurar o botão direito para mirar (no PC)</label>
+    <button class="btn big" id="closeSettings">Salvar</button>
+  </div>
+</section>
 
 <!-- Resultado -->
 <section class="screen dim" id="result" hidden>
@@ -97,14 +136,16 @@
     <h1 id="resT"></h1>
     <p id="resP"></p>
     <div class="stats"><div><span>Colocação</span><b id="resRank"></b></div><div><span>Seus abates</span><b id="resKills"></b></div><div><span>Abates do time</span><b id="resTeamKills"></b></div></div>
-    <div class="row"><button class="btn big" id="resLobby">Voltar ao lobby</button><button class="btn ghost" id="resWatch">Assistir</button></div>
+    <div class="row"><button class="btn big" id="resLobby">Voltar ao lobby</button><button class="btn ghost" id="resWatch">Ver o mapa</button></div>
   </div>
 </section>
 
 <div id="toast" role="status"></div>
 <div id="conn" hidden>Reconectando…</div>
 
+<script src="vendor/three.min.js"></script>
 <script src="shared.js"></script>
+<script src="gfx.js"></script>
 <script src="client.js"></script>
 </body>
 </html>

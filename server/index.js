@@ -15,6 +15,13 @@ const LOBBY_WAIT = +process.env.LOBBY_WAIT || 25; // segundos esperando jogadore
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const PUBLIC = path.join(__dirname, '..', 'public');
 const google = new OAuth2Client(GOOGLE_CLIENT_ID);
+const zlib = require('zlib');
+const gz = new Map();
+function gzipCache(file, data) {
+  const key = file + ':' + data.length;
+  if (!gz.has(key)) gz.set(key, zlib.gzipSync(data, { level: 9 }));
+  return gz.get(key);
+}
 
 if (!GOOGLE_CLIENT_ID && !DEV_LOGIN) console.warn('[aviso] GOOGLE_CLIENT_ID não definido: ninguém vai conseguir entrar.');
 
@@ -44,8 +51,13 @@ const server = http.createServer((req, res) => {
   if (!file.startsWith(PUBLIC)) { res.writeHead(403); res.end(); return; }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); res.end('não encontrado'); return; }
-    res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-cache' });
-    res.end(data);
+    const ext = path.extname(file), headers = { 'content-type': MIME[ext] || 'application/octet-stream', 'cache-control': file.includes('vendor') ? 'public, max-age=604800' : 'no-cache' };
+    // arquivos de texto vão compactados (o three.js cai de 600 KB para 150 KB)
+    if (/gzip/.test(req.headers['accept-encoding'] || '') && ['.js', '.css', '.html', '.json', '.svg'].includes(ext)) {
+      headers['content-encoding'] = 'gzip'; headers.vary = 'Accept-Encoding';
+      res.writeHead(200, headers); res.end(gzipCache(file, data)); return;
+    }
+    res.writeHead(200, headers); res.end(data);
   });
 });
 

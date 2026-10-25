@@ -1,6 +1,8 @@
 # Última Ilha
 
-Battle royale online e leve, direto no navegador. Até 50 jogadores por partida, com bots completando as vagas.
+Battle royale online em 3D, direto no navegador, com câmera em terceira pessoa (inspirado em Free Fire e Call of Duty).
+Até 50 jogadores por partida, com bots completando as vagas. Mapa com montanhas, casas com porta e janelas, árvores e pedras.
+Miras: ponto vermelho, 2x, 4x e sniper 8x, com sensibilidade separada para cada uma.
 Modos: solo, dupla, trio, squad (4) e quinteto (5). Login somente com conta Google.
 
 ## Como funciona
@@ -8,10 +10,17 @@ Modos: solo, dupla, trio, squad (4) e quinteto (5). Login somente com conta Goog
 - `server/index.js`: entrega o site, confirma o login Google, cuida dos grupos (código de 5 letras), da fila e das partidas.
 - `server/match.js`: simula a partida no servidor (movimento, tiros, dano, bots, tempestade, caídos e reanimação). 30 passos por segundo.
 - `public/shared.js`: gera o mapa a partir de uma semente e faz o movimento. Usado pelo servidor e pelo navegador.
-- `public/client.js`: lobby, conexão, previsão do próprio movimento, interpolação dos outros jogadores e desenho em canvas.
+- `public/client.js`: lobby, conexão, controles (PC e celular), câmera, miras, previsão do próprio movimento e interpolação dos outros jogadores.
+- `public/gfx.js`: parte visual em three.js (céu, sombras, relevo com textura, grama, casas, soldados, armas, clarão de tiro).
+- `public/vendor/three.min.js`: three.js r128, servido pelo próprio jogo.
 
 O servidor é quem decide tudo, então o navegador não consegue trapacear mudando vida ou munição.
 As estatísticas (partidas, vitórias, abates) ficam em `data/stats.json`.
+
+## Controles
+
+- PC: clique na tela para controlar a câmera. WASD anda, Shift corre, Espaço pula, C agacha, botão direito mira, botão esquerdo atira, R recarrega, H cura, Q troca de arma, E pega arma, F reanima, M abre o mapa.
+- Celular: joystick à esquerda, arraste à direita para olhar, botões de atirar, mirar, pular e agachar.
 
 ## Rodar no seu computador
 

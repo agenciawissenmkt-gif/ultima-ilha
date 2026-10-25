@@ -106,3 +106,57 @@ input { font: 500 15px var(--f-b); color: var(--ink); background: rgba(0, 0, 0, 
 .touch-only { display: none }
 @media (pointer: coarse) { .btn kbd { display: none } #mm { width: 100px; height: 100px } #mates { width: 140px } }
 @media (prefers-reduced-motion: reduce) { #msg, #toast { transition: none } }
+
+/* ---------- 3D: mira, bússola, luneta, controles de toque ---------- */
+#c { cursor: default }
+.panel h1.h2 { font-size: 28px }
+.tiny .btn { padding: 4px 8px; font-size: 12px }
+.compass { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 10px); left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 3px 12px; font: 400 15px var(--f-d); min-width: 84px; text-align: center; font-variant-numeric: tabular-nums }
+#cross { position: absolute; left: 50%; top: 50%; width: 0; height: 0; --g: 8px }
+#cross i { position: absolute; background: rgba(255, 255, 255, .92); box-shadow: 0 0 2px rgba(0, 0, 0, .8) }
+#cross .ct, #cross .cb { width: 2px; height: 8px; left: -1px }
+#cross .ct { bottom: var(--g) } #cross .cb { top: var(--g) }
+#cross .cl, #cross .cr { height: 2px; width: 8px; top: -1px }
+#cross .cl { right: var(--g) } #cross .cr { left: var(--g) }
+#cross b { position: absolute; width: 4px; height: 4px; left: -2px; top: -2px; border-radius: 50%; background: #ff4040; box-shadow: 0 0 2px #000 }
+#cross.hidden { display: none }
+#hitmark { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px; opacity: 0; transition: opacity .12s;
+  background: linear-gradient(45deg, transparent 45%, #fff 45%, #fff 55%, transparent 55%), linear-gradient(-45deg, transparent 45%, #fff 45%, #fff 55%, transparent 55%);
+  -webkit-mask: radial-gradient(circle, transparent 5px, #000 6px); mask: radial-gradient(circle, transparent 5px, #000 6px) }
+#hitmark.on { opacity: 1; transition: none }
+#hitmark.head { filter: drop-shadow(0 0 0 #ff4040) hue-rotate(0deg); background: linear-gradient(45deg, transparent 45%, #ff4a4a 45%, #ff4a4a 55%, transparent 55%), linear-gradient(-45deg, transparent 45%, #ff4a4a 45%, #ff4a4a 55%, transparent 55%) }
+#dmgnum { position: absolute; left: calc(50% + 22px); top: calc(50% - 34px); font: 400 18px var(--f-d); color: #fff; text-shadow: 0 1px 3px #000; opacity: 0; transition: opacity .4s }
+#dmgnum.on { opacity: 1; transition: none }
+#dmgnum.head { color: #ffd23a }
+#dmgdir { position: absolute; left: 50%; top: 50%; width: 220px; height: 220px; margin: -110px; border-radius: 50%; border-top: 5px solid rgba(255, 50, 50, .85); opacity: 0; transition: opacity .6s }
+#dmgdir.on { opacity: 1; transition: none }
+#scope { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, transparent 0, transparent min(38vh, 38vw), #000 calc(min(38vh, 38vw) + 1px)) }
+#scope .ring { position: absolute; left: 50%; top: 50%; width: min(76vh, 76vw); height: min(76vh, 76vw); transform: translate(-50%, -50%); border-radius: 50%; box-shadow: inset 0 0 40px rgba(0, 0, 0, .7), 0 0 0 3px #111 }
+#scope i { position: absolute; background: rgba(0, 0, 0, .85) }
+#scope .h { left: calc(50% - min(38vh, 38vw)); width: min(76vh, 76vw); top: 50%; height: 1px }
+#scope .v { top: calc(50% - min(38vh, 38vw)); height: min(76vh, 76vw); left: 50%; width: 1px }
+#scope span { position: absolute; left: 50%; bottom: 12%; transform: translateX(-50%); font: 700 13px var(--f-b); color: #ddd }
+#lockHint { position: absolute; left: 50%; top: 60%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-weight: 700 }
+.touch { position: absolute; inset: 0; pointer-events: none }
+.tbtn { position: absolute; pointer-events: auto; width: 62px; height: 62px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .45); background: rgba(10, 20, 26, .45); color: #fff; font: 700 11px var(--f-b); touch-action: none }
+.tbtn.on { background: rgba(255, 194, 58, .55); border-color: var(--gold) }
+.tbtn.fire { width: 84px; height: 84px; right: calc(env(safe-area-inset-right, 0px) + 26px); bottom: calc(env(safe-area-inset-bottom, 0px) + 120px); background: rgba(220, 50, 50, .5) radial-gradient(circle, rgba(255, 255, 255, .8) 0 6px, transparent 7px) }
+.tbtn.fire.small { width: 58px; height: 58px; right: auto; left: calc(env(safe-area-inset-left, 0px) + 24px); bottom: calc(env(safe-area-inset-bottom, 0px) + 250px) }
+#tAds { right: calc(env(safe-area-inset-right, 0px) + 124px); bottom: calc(env(safe-area-inset-bottom, 0px) + 96px) }
+#tJump { right: calc(env(safe-area-inset-right, 0px) + 22px); bottom: calc(env(safe-area-inset-bottom, 0px) + 222px) }
+#tCrouch { right: calc(env(safe-area-inset-right, 0px) + 118px); bottom: calc(env(safe-area-inset-bottom, 0px) + 176px) }
+#mm { cursor: pointer }
+.mapbox { display: flex; flex-direction: column; gap: 10px; align-items: center; width: min(640px, 100%) }
+#bm { width: min(640px, 92vw, 78vh); height: auto; aspect-ratio: 1; border-radius: 10px; border: 1px solid var(--line); background: #1a5a6b }
+.sens { display: grid; gap: 10px }
+.sens label { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: 14px }
+.sens input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--gold) }
+.sens output { font: 400 16px var(--f-d); color: var(--gold); font-variant-numeric: tabular-nums }
+.opt { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 14px }
+.opt select { font: 500 14px var(--f-b); color: var(--ink); background: rgba(0, 0, 0, .3); border: 1px solid var(--line); border-radius: 7px; padding: 7px 8px }
+.opt.chk { justify-content: flex-start; color: var(--muted) }
+@media (pointer: coarse) {
+  .bottom { width: min(330px, calc(100vw - 230px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) }
+  .actions .btn { padding: 7px 9px; font-size: 12px }
+  #leaveMatch { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 150px) }
+}
