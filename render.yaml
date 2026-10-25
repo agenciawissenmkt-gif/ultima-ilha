@@ -3,7 +3,7 @@ services:
     name: ultima-ilha
     runtime: node
     plan: free
-    region: oregon
+    region: virginia
     buildCommand: npm install --omit=dev
     startCommand: npm start
     healthCheckPath: /health
