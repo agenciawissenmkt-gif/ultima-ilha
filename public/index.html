@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Última Ilha</title>
+<meta name="description" content="Battle royale online leve, direto no navegador. Solo, dupla, trio, squad e quinteto.">
+<meta name="theme-color" content="#0f3440">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%236aa84f'/%3E%3Ccircle cx='32' cy='32' r='12' fill='%23ffc23a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Chakra+Petch:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<!-- Login -->
+<section class="screen" id="login">
+  <div class="panel">
+    <h1>Última Ilha</h1>
+    <p>Battle royale online direto no navegador. Salte do avião com seu time, abra baús, pegue armas e seja o último de pé.</p>
+    <div id="gbtn"></div>
+    <form id="devForm" hidden>
+      <label for="devName">Seu apelido</label>
+      <div class="row"><input id="devName" maxlength="18" autocomplete="off" placeholder="Seu apelido"><button class="btn">Entrar</button></div>
+    </form>
+    <p class="small" id="loginMsg">Entrada somente com conta Google.</p>
+  </div>
+</section>
+
+<!-- Lobby -->
+<section class="screen" id="lobby" hidden>
+  <div class="lobby">
+    <header class="me">
+      <img id="meAvatar" alt="" width="44" height="44">
+      <div><b id="meName"></b><span id="meStats"></span></div>
+      <button class="btn ghost" id="logout">Sair</button>
+    </header>
+    <div class="card">
+      <h2>Seu grupo</h2>
+      <div class="code-row">
+        <span>Código do grupo</span>
+        <b id="partyCode">-----</b>
+        <button class="btn ghost" id="copyCode">Copiar</button>
+      </div>
+      <ul id="members"></ul>
+      <form class="row" id="joinForm">
+        <input id="joinCode" maxlength="5" placeholder="Código de um amigo" autocomplete="off" aria-label="Código do grupo do amigo">
+        <button class="btn">Entrar no grupo</button>
+      </form>
+      <button class="btn ghost" id="leaveParty" hidden>Sair do grupo</button>
+    </div>
+    <div class="card">
+      <h2>Modo</h2>
+      <div class="modes" id="modes"></div>
+      <p class="small" id="modeHint"></p>
+    </div>
+    <button class="btn big" id="playBtn">Jogar</button>
+    <p class="queue" id="queueInfo" hidden></p>
+  </div>
+</section>
+
+<!-- HUD da partida -->
+<div class="hud" id="hud" hidden>
+  <div class="tl">
+    <div class="chips">
+      <div class="chip">Vivos <b id="alive">50</b></div>
+      <div class="chip">Times <b id="teamsLeft">0</b></div>
+      <div class="chip">Abates <b id="kills">0</b></div>
+      <div class="chip zone" id="zoneChip"><span id="zoneLbl">Zona</span> <b id="zoneT">0:00</b></div>
+    </div>
+    <div id="mates"></div>
+    <div id="feed"></div>
+  </div>
+  <div class="tr"><canvas id="mm" width="248" height="248"></canvas><span class="ping" id="ping"></span></div>
+  <div id="msg"></div>
+  <button class="btn hot" id="jump" hidden>Saltar</button>
+  <div class="bottom" id="bottom" hidden>
+    <div class="actions">
+      <button class="btn hot" id="bRev" hidden>Reanimar (segure F)</button>
+      <button class="btn hot" id="bPick" hidden>Pegar <kbd>E</kbd></button>
+      <button class="btn" id="bSwap">Trocar arma <kbd>Q</kbd></button>
+      <button class="btn" id="bReload">Recarregar <kbd>R</kbd></button>
+      <button class="btn" id="bHeal">Curar <kbd>H</kbd></button>
+    </div>
+    <div class="slots"><div class="slot" id="s0"></div><div class="slot" id="s1"></div></div>
+    <div class="bars"><div class="bar" id="shb"><i></i></div><div class="bar" id="hpb"><i></i></div></div>
+  </div>
+  <button class="btn ghost" id="leaveMatch" hidden>Voltar ao lobby</button>
+</div>
+
+<!-- Resultado -->
+<section class="screen dim" id="result" hidden>
+  <div class="panel">
+    <h1 id="resT"></h1>
+    <p id="resP"></p>
+    <div class="stats"><div><span>Colocação</span><b id="resRank"></b></div><div><span>Seus abates</span><b id="resKills"></b></div><div><span>Abates do time</span><b id="resTeamKills"></b></div></div>
+    <div class="row"><button class="btn big" id="resLobby">Voltar ao lobby</button><button class="btn ghost" id="resWatch">Assistir</button></div>
+  </div>
+</section>
+
+<div id="toast" role="status"></div>
+<div id="conn" hidden>Reconectando…</div>
+
+<script src="shared.js"></script>
+<script src="client.js"></script>
+</body>
+</html>

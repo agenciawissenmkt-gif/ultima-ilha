@@ -1,0 +1,16 @@
+{
+  "name": "ultima-ilha",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Battle royale online leve em HTML: solo, dupla, trio, squad e quinteto, com login Google.",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "DEV_LOGIN=1 LOBBY_WAIT=5 node server/index.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "google-auth-library": "^9.15.0",
+    "ws": "^8.18.0"
+  }
+}

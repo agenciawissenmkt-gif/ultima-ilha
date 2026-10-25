@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: ultima-ilha
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      # Login por apelido, para testar sem Google. Quando configurar o Google, troque para "0" e preencha GOOGLE_CLIENT_ID.
+      - key: DEV_LOGIN
+        value: "1"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: LOBBY_WAIT
+        value: "25"
