@@ -60,11 +60,13 @@
   function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 3200); }
   function screen(name) {
     $('#login').hidden = name !== 'login'; $('#lobby').hidden = name !== 'lobby'; $('#hud').hidden = name !== 'game';
+    if (name !== 'lobby') $('#searching').hidden = true;
     if (name !== 'game') { $('#result').hidden = true; $('#bigmap').hidden = true; if (document.pointerLockElement) document.exitPointerLock(); }
   }
   function onMsg(m) {
     switch (m.t) {
       case 'auth':
+        $('#loginBtn').textContent = 'Jogar';
         if (!m.ok) { authed = false; store.set('ui-session', null); $('#loginMsg').textContent = m.msg; screen('login'); return; }
         authed = true; retry = 0; $('#conn').hidden = true;
         store.set('ui-session', m.session); user = m.user; stats = m.stats; if (m.look) { conf.look = m.look; store.set('ui-conf', JSON.stringify(conf)); } renderMe(); renderLook(); if (!M) screen('lobby');
@@ -90,7 +92,10 @@
     if (s) connect({ session: s }); else screen('login');
     const last = store.get('ui-nick'); if (last) $('#devName').value = last;
   }
-  $('#devForm').addEventListener('submit', e => { e.preventDefault(); const n = $('#devName').value.trim(); if (!n) return; store.set('ui-nick', n); connect({ nick: n, pid: playerId() }); });
+  function login(n) { n = (n || '').trim(); if (!n) { $('#loginMsg').textContent = 'Digite um apelido para entrar.'; $('#devName').focus(); $('#loginBtn').textContent = 'Jogar'; return; } store.set('ui-nick', n); $('#loginBtn').textContent = 'Entrando…'; connect({ nick: n, pid: playerId() }); }
+  $('#devForm').addEventListener('submit', e => { e.preventDefault(); login($('#devName').value); });
+  window.__gameReady = true; $('#loginBtn').textContent = 'Jogar';
+  if (window.__pendingNick !== null) login(window.__pendingNick);
   $('#logout').addEventListener('click', () => {
     store.set('ui-session', null); authed = false; kicked = true; if (ws) ws.close();
     screen('login');
@@ -138,6 +143,8 @@
   }
   function renderQueue() {
     const q = $('#queueInfo');
+    $('#searching').hidden = !(party && party.queued) || !!M;
+    if (queue) { $('#searchCount').textContent = fmtT(queue.secs); $('#searchTxt').textContent = `${queue.humans} de ${queue.max} jogadores reais. Bots completam o resto.`; }
     if (!party || !party.queued) { q.hidden = true; return; }
     q.hidden = false;
     q.textContent = queue ? `Procurando partida · ${queue.humans} de ${queue.max} jogadores · começa em ${fmtT(queue.secs)} (bots completam o resto)` : 'Procurando partida…';
@@ -146,6 +153,7 @@
   $('#modes').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b && !b.disabled) send({ t: 'party.mode', mode: b.dataset.mode }); });
   $('#joinForm').addEventListener('submit', e => { e.preventDefault(); const c = $('#joinCode').value.trim(); if (c) { send({ t: 'party.join', code: c }); $('#joinCode').value = ''; } });
   $('#leaveParty').addEventListener('click', () => send({ t: 'party.leave' }));
+  $('#cancelSearch').addEventListener('click', () => send({ t: 'unqueue' }));
   $('#playBtn').addEventListener('click', () => { initAudio(); send({ t: party && party.queued ? 'unqueue' : 'queue' }); });
   $('#copyCode').addEventListener('click', () => {
     const c = party ? party.code : '';

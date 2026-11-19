@@ -8,7 +8,7 @@ const SH = require('../public/shared.js');
 const { Match } = require('./match.js');
 
 const PORT = +process.env.PORT || 3000;
-const LOBBY_WAIT = +process.env.LOBBY_WAIT || 25; // segundos esperando jogadores antes de completar com bots
+const LOBBY_WAIT = +process.env.LOBBY_WAIT || 12; // segundos esperando jogadores antes de completar com bots
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const PUBLIC = path.join(__dirname, '..', 'public');
 const zlib = require('zlib');

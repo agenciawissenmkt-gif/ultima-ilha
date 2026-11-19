@@ -49,5 +49,5 @@ e defina `DATA_DIR` para a pasta do disco.
 
 | Nome | Para que serve |
 | --- | --- |
-| `LOBBY_WAIT` | Segundos esperando jogadores antes de completar com bots (padrão 25). |
+| `LOBBY_WAIT` | Segundos esperando jogadores antes de completar com bots (padrão 12). |
 | `DATA_DIR` | Pasta onde salvar as estatísticas (padrão `./data`). |

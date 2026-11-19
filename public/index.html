@@ -11,6 +11,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Chakra+Petch:wght@500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="style.css">
+<script>
+  // guarda o apelido se a pessoa apertar Jogar antes do jogo terminar de carregar
+  window.__pendingNick = null;
+  document.addEventListener('submit', function (e) {
+    if (e.target && e.target.id === 'devForm') { e.preventDefault(); if (!window.__gameReady) { window.__pendingNick = document.getElementById('devName').value; document.getElementById('loginBtn').textContent = 'Entrando…'; } }
+  }, true);
+</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -20,9 +27,9 @@
   <div class="panel">
     <h1>Última Ilha</h1>
     <p>Battle royale online em 3D direto no navegador. Salte do avião com seu time, entre nas casas, suba as montanhas e seja o último de pé.</p>
-    <form id="devForm">
+    <form id="devForm" action="javascript:void(0)">
       <label for="devName">Escolha um apelido</label>
-      <div class="row"><input id="devName" maxlength="18" autocomplete="off" placeholder="Seu apelido"><button class="btn hot">Jogar</button></div>
+      <div class="row"><input id="devName" maxlength="18" autocomplete="off" placeholder="Seu apelido"><button class="btn hot" id="loginBtn">Carregando…</button></div>
     </form>
     <p class="small" id="loginMsg">Sem cadastro: digite um apelido e jogue.</p>
   </div>
@@ -68,6 +75,17 @@
     </div>
     <button class="btn big" id="playBtn">Jogar</button>
     <p class="queue" id="queueInfo" hidden></p>
+  </div>
+</section>
+
+<!-- Procurando partida -->
+<section class="screen dim" id="searching" hidden>
+  <div class="panel center">
+    <div class="spinner" aria-hidden="true"></div>
+    <h1 class="h2">Procurando partida</h1>
+    <p id="searchTxt">Começando…</p>
+    <b class="count" id="searchCount">0:12</b>
+    <button class="btn" id="cancelSearch">Cancelar</button>
   </div>
 </section>
 

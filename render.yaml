@@ -9,4 +9,4 @@ services:
     healthCheckPath: /health
     envVars:
       - key: LOBBY_WAIT
-        value: "25"
+        value: "12"
