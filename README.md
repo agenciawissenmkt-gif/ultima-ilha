@@ -3,7 +3,7 @@
 Battle royale online em 3D, direto no navegador, com câmera em terceira pessoa (inspirado em Free Fire e Call of Duty).
 Até 50 jogadores por partida, com bots completando as vagas. Mapa com montanhas, casas com porta e janelas, árvores e pedras.
 Miras: ponto vermelho, 2x, 4x e sniper 8x, com sensibilidade separada para cada uma.
-Modos: solo, dupla, trio, squad (4) e quinteto (5). Login somente com conta Google.
+Modos: solo, dupla, trio, squad (4) e quinteto (5). Sem cadastro: qualquer pessoa entra só com um apelido.
 
 ## Como funciona
 
@@ -30,26 +30,16 @@ As estatísticas (partidas, vitórias, abates) ficam em `data/stats.json`.
 
 ```bash
 npm install
-npm run dev      # abre em http://localhost:3000 com login de teste (sem Google)
+npm run dev      # abre em http://localhost:3000
 ```
 
 Abra duas abas para testar grupo e partida juntos.
-
-## Criar o login com Google (uma vez)
-
-1. Acesse https://console.cloud.google.com/ e crie um projeto (por exemplo "Ultima Ilha").
-2. Vá em **APIs e serviços → Tela de consentimento OAuth**, escolha **Externo**, preencha nome do app e e-mail e salve.
-3. Vá em **APIs e serviços → Credenciais → Criar credenciais → ID do cliente OAuth**.
-4. Tipo de aplicativo: **Aplicativo da Web**.
-5. Em **Origens JavaScript autorizadas**, adicione o endereço do site, por exemplo `https://ultima-ilha.onrender.com` (e `http://localhost:3000` para testes).
-6. Copie o **ID do cliente** (termina em `.apps.googleusercontent.com`). Ele não é segredo.
 
 ## Publicar no Render
 
 1. Crie uma conta em https://render.com e conecte o GitHub.
 2. Clique em **New → Blueprint** e escolha este repositório. O `render.yaml` já configura tudo.
-3. Quando pedir, cole o ID do cliente Google em `GOOGLE_CLIENT_ID`.
-4. Depois que o site subir, confira se o endereço dele está nas origens autorizadas do Google (passo 5 acima).
+3. Espere aparecer **Live** e abra o link do topo.
 
 No plano grátis do Render o servidor dorme depois de 15 minutos sem ninguém e leva uns 50 segundos para acordar,
 e o arquivo de estatísticas é apagado a cada nova publicação. Para jogar sério, use o plano Starter (US$ 7/mês) com um disco
@@ -59,7 +49,5 @@ e defina `DATA_DIR` para a pasta do disco.
 
 | Nome | Para que serve |
 | --- | --- |
-| `GOOGLE_CLIENT_ID` | ID do cliente OAuth do Google. Obrigatório em produção. |
 | `LOBBY_WAIT` | Segundos esperando jogadores antes de completar com bots (padrão 25). |
 | `DATA_DIR` | Pasta onde salvar as estatísticas (padrão `./data`). |
-| `DEV_LOGIN` | `1` libera login sem Google. Use só no seu computador. |

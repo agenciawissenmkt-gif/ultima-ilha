@@ -40,7 +40,7 @@
   const makeItem = it => GX.makeItem(it);
 
   // ---------- conexão ----------
-  let cfg = { googleClientId: '', dev: false }, ws = null, authed = false, user = null, stats = null, party = null, queue = null, retry = 0, kicked = false;
+  let ws = null, authed = false, user = null, stats = null, party = null, queue = null, retry = 0, kicked = false;
   let M = null;
   function connect(cred) {
     if (ws) { try { ws.close(); } catch (e) { } }
@@ -79,24 +79,20 @@
       default: if (M) matchMsg(m);
     }
   }
+  // identidade deste aparelho (não precisa de conta)
+  function playerId() {
+    let id = store.get('ui-pid');
+    if (!id || !/^[a-z0-9]{16,40}$/.test(id)) { id = Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(36).padStart(2, '0')).join('').slice(0, 24); store.set('ui-pid', id); }
+    return id;
+  }
   async function boot() {
-    try { cfg = await (await fetch('/config', { cache: 'no-store' })).json(); } catch (e) { }
     const s = store.get('ui-session');
     if (s) connect({ session: s }); else screen('login');
-    if (cfg.dev) { $('#devForm').hidden = false; if (!cfg.googleClientId) $('#loginMsg').textContent = 'Modo de teste: entre só com um apelido.'; }
-    if (cfg.googleClientId) {
-      const init = () => {
-        if (!(window.google && google.accounts && google.accounts.id)) return setTimeout(init, 200);
-        google.accounts.id.initialize({ client_id: cfg.googleClientId, callback: r => connect({ token: r.credential }), ux_mode: 'popup' });
-        google.accounts.id.renderButton($('#gbtn'), { theme: 'filled_black', size: 'large', shape: 'pill', text: 'signin_with', locale: 'pt-BR' });
-      };
-      init();
-    } else if (!cfg.dev) $('#loginMsg').textContent = 'O login com Google ainda não foi configurado neste servidor.';
+    const last = store.get('ui-nick'); if (last) $('#devName').value = last;
   }
-  $('#devForm').addEventListener('submit', e => { e.preventDefault(); const n = $('#devName').value.trim(); if (n) connect({ dev: n }); });
+  $('#devForm').addEventListener('submit', e => { e.preventDefault(); const n = $('#devName').value.trim(); if (!n) return; store.set('ui-nick', n); connect({ nick: n, pid: playerId() }); });
   $('#logout').addEventListener('click', () => {
     store.set('ui-session', null); authed = false; kicked = true; if (ws) ws.close();
-    try { google.accounts.id.disableAutoSelect(); } catch (e) { }
     screen('login');
   });
 

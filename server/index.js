@@ -4,17 +4,13 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
-const { OAuth2Client } = require('google-auth-library');
 const SH = require('../public/shared.js');
 const { Match } = require('./match.js');
 
 const PORT = +process.env.PORT || 3000;
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
-const DEV_LOGIN = process.env.DEV_LOGIN === '1'; // login por apelido, sem Google (para testes)
 const LOBBY_WAIT = +process.env.LOBBY_WAIT || 25; // segundos esperando jogadores antes de completar com bots
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const PUBLIC = path.join(__dirname, '..', 'public');
-const google = new OAuth2Client(GOOGLE_CLIENT_ID);
 const zlib = require('zlib');
 const gz = new Map();
 function gzipCache(file, data) {
@@ -23,7 +19,6 @@ function gzipCache(file, data) {
   return gz.get(key);
 }
 
-if (!GOOGLE_CLIENT_ID && !DEV_LOGIN) console.warn('[aviso] GOOGLE_CLIENT_ID não definido: ninguém vai conseguir entrar.');
 
 // ---------- estatísticas salvas em arquivo ----------
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -45,7 +40,7 @@ const server = http.createServer((req, res) => {
   if (url.pathname === '/health') { res.writeHead(200); res.end('ok'); return; }
   if (url.pathname === '/config') {
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-    res.end(JSON.stringify({ googleClientId: GOOGLE_CLIENT_ID, dev: DEV_LOGIN })); return;
+    res.end(JSON.stringify({ ok: true })); return;
   }
   let p = decodeURIComponent(url.pathname); if (p === '/') p = '/index.html';
   const file = path.normalize(path.join(PUBLIC, p));
@@ -193,16 +188,12 @@ async function hello(conn, m) {
     if (typeof m.session === 'string' && sessions.has(m.session)) {
       const s = sessions.get(m.session); const u = users.get(s.userId);
       if (u && s.exp > Date.now()) profile = { id: u.id, name: u.name, pic: u.pic };
-    } else if (typeof m.token === 'string' && GOOGLE_CLIENT_ID) {
-      const ticket = await google.verifyIdToken({ idToken: m.token, audience: GOOGLE_CLIENT_ID });
-      const p = ticket.getPayload();
-      if (!p || !p.sub) throw new Error('token sem usuário');
-      profile = { id: 'g:' + p.sub, name: (p.given_name || p.name || 'Jogador').slice(0, 18), pic: p.picture || '' };
-    } else if (DEV_LOGIN && typeof m.dev === 'string' && m.dev.trim()) {
-      const n = m.dev.trim().slice(0, 18); profile = { id: 'dev:' + n.toLowerCase(), name: n, pic: '' };
+    } else if (typeof m.nick === 'string' && m.nick.trim() && typeof m.pid === 'string' && /^[a-z0-9]{16,40}$/.test(m.pid)) {
+      // entrada só com apelido: cada aparelho tem uma identidade própria (pid), então apelidos iguais não se misturam
+      const n = m.nick.replace(/[<>]/g, '').trim().slice(0, 18); profile = { id: 'p:' + m.pid, name: n || 'Jogador', pic: '' };
     }
   } catch (e) { profile = null; }
-  if (!profile) { conn.send({ t: 'auth', ok: false, msg: 'Não deu para confirmar sua conta Google. Entre de novo.' }); return; }
+  if (!profile) { conn.send({ t: 'auth', ok: false, msg: 'Digite um apelido para entrar.' }); return; }
 
   let u = users.get(profile.id);
   if (!u) { u = { id: profile.id, name: profile.name, pic: profile.pic, conn: null, party: null, match: null }; users.set(u.id, u); }
@@ -273,4 +264,4 @@ function handle(u, m) {
   }
 }
 
-server.listen(PORT, () => console.log(`Última Ilha rodando na porta ${PORT}${DEV_LOGIN ? ' (login de teste ligado)' : ''}`));
+server.listen(PORT, () => console.log(`Última Ilha rodando na porta ${PORT}`));

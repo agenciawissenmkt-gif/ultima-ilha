@@ -9,9 +9,8 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%236aa84f'/%3E%3Ccircle cx='32' cy='32' r='12' fill='%23ffc23a'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Chakra+Petch:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Chakra+Petch:wght@500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="style.css">
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -21,12 +20,11 @@
   <div class="panel">
     <h1>Última Ilha</h1>
     <p>Battle royale online em 3D direto no navegador. Salte do avião com seu time, entre nas casas, suba as montanhas e seja o último de pé.</p>
-    <div id="gbtn"></div>
-    <form id="devForm" hidden>
-      <label for="devName">Seu apelido</label>
-      <div class="row"><input id="devName" maxlength="18" autocomplete="off" placeholder="Seu apelido"><button class="btn">Entrar</button></div>
+    <form id="devForm">
+      <label for="devName">Escolha um apelido</label>
+      <div class="row"><input id="devName" maxlength="18" autocomplete="off" placeholder="Seu apelido"><button class="btn hot">Jogar</button></div>
     </form>
-    <p class="small" id="loginMsg">Entrada somente com conta Google.</p>
+    <p class="small" id="loginMsg">Sem cadastro: digite um apelido e jogue.</p>
   </div>
 </section>
 
