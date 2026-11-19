@@ -7,7 +7,7 @@ Modos: solo, dupla, trio, squad (4) e quinteto (5). Sem cadastro: qualquer pesso
 
 ## Como funciona
 
-- `server/index.js`: entrega o site, confirma o login Google, cuida dos grupos (código de 5 letras), da fila e das partidas.
+- `server/index.js`: entrega o site, faz a entrada por apelido, cuida dos grupos (código de 5 letras), da fila e das partidas.
 - `server/match.js`: simula a partida no servidor (movimento, tiros, dano, bots, tempestade, caídos e reanimação). 30 passos por segundo.
 - `public/shared.js`: gera o mapa a partir de uma semente e faz o movimento. Usado pelo servidor e pelo navegador.
 - `public/client.js`: lobby, conexão, controles (PC e celular), câmera, miras, previsão do próprio movimento e interpolação dos outros jogadores.
